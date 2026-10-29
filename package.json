@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "5.0.0",
-    "sharp": "0.33.0",
-    "yaml": "2.5.0"
+    "sharp": "0.35.5",
+    "yaml": "2.9.1"
   }
 }
