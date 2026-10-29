@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────
+#  ARTWORKS
+#
+#  - The FIRST artwork in this list is the home page, so put
+#    your newest piece at the top.
+#  - To add a piece: copy one block (from the "- id:" line down
+#    to the last line of that block), paste it at the top, change
+#    the words, and upload the photo(s).
+#  - Keep the spacing exactly as shown. Each line inside a block
+#    starts with the same number of spaces.
+#
+#  Fields
+#    id           Short web-address name: lowercase letters,
+#                 numbers and dashes only. Must be different
+#                 for every piece. Example: lake-at-dawn
+#    title        Shown as the heading.
+#    completed    Optional. Example: October 2026
+#    description  A few sentences. Blank line = new paragraph.
+#    photo        File name inside photos/artworks/
+#    alt          Optional. Describe the painting in a sentence
+#                 for people who use screen readers.
+#    background   Optional. Overrides the automatic background
+#                 color, for example "#E8E1F0".
+#    extras       Optional. Behind-the-scenes / inspiration photos.
+#                 Each one has kind, title, description, photo
+#                 (file name inside photos/extras/).
+# ─────────────────────────────────────────────────────────────
+
+- id: sample-one
+  title: "[Artwork title 1]"
+  completed: "[Month Year]"
+  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
+  photo: sample-one.jpg
+  alt: "[Describe the painting in one sentence]"
+  extras:
+    - kind: Behind the scenes
+      title: "[Photo caption title]"
+      description: "[Short caption: one or two lines about this photo.]"
+      photo: sample-one-studio.jpg
+    - kind: Inspired by
+      title: "[Photo caption title]"
+      description: "[Short caption: one or two lines about this photo.]"
+      photo: sample-one-inspiration.jpg
+    - kind: Reference photo
+      title: "[Photo caption title]"
+      description: "[Short caption: one or two lines about this photo.]"
+      photo: sample-one-reference.jpg
+
+- id: sample-two
+  title: "[Artwork title 2]"
+  completed: "[Month Year]"
+  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
+  photo: sample-two.jpg
+  extras:
+    - kind: Behind the scenes
+      title: "[Photo caption title]"
+      description: "[Short caption: one or two lines about this photo.]"
+      photo: sample-two-studio.jpg
+
+- id: sample-three
+  title: "[Artwork title 3]"
+  completed: "[Month Year]"
+  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
+  photo: sample-three.jpg

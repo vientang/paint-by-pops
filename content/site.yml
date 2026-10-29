@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────────
+#  SITE SETTINGS  (edit once, rarely)
+# ─────────────────────────────────────────────────────────────
+
+artist: "[Artist Name]"
+location: "[Location]"
+medium: "[Medium]"
+
+# Fill this in once you know your web address (no slash at the end).
+# It lets links shared by text or social media show a preview picture.
+# Example: https://my-gallery.pages.dev
+url: ""
+
+# Photo of you for the About page. Put the file in the "photos" folder.
+# Remove this line if you don't want a photo.
+about_photo: about.jpg
+
+# Your bio. Leave a blank line between paragraphs.
+bio: |
+  [Bio paragraph 1: who you are, where you live, and how you began making art.]
+
+  [Bio paragraph 2: the materials you use and what inspires your work.]
+
+  [Bio paragraph 3: how to reach you or where the work has been shown.]

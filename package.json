@@ -1,0 +1,19 @@
+{
+  "name": "paint-by-pops",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Art gallery site featuring my Pops artwork.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && node scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "5.0.0",
+    "sharp": "0.33.0",
+    "yaml": "2.5.0"
+  }
+}
