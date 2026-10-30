@@ -2,16 +2,16 @@
 #  SITE SETTINGS  (edit once, rarely)
 # ─────────────────────────────────────────────────────────────
 
-artist: "[Artist Name]"
-location: "[Location]"
-medium: "[Medium]"
+artist: "Nguyen Tang"
+location: "San Jose, CA"
+medium: "Oil Painting"
 
 # Fill this in once you know your web address (no slash at the end).
 # It lets links shared by text or social media show a preview picture.
 # Example: https://my-gallery.pages.dev
-url: ""
+url: "https://paintbypops.com"
 
-# Photo of you for the About page. Put the file in the "photos" folder.
+# Photo of artist for the About page. Put the file in the "photos" folder.
 # Remove this line if you don't want a photo.
 about_photo: about.jpg
 
