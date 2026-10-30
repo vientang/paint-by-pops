@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 #  ARTWORKS
 #
-#  - The FIRST artwork in this list is the home page, so put
+#  - Artworks appear on the home page in this order, so put
 #    your newest piece at the top.
 #  - To add a piece: copy one block (from the "- id:" line down
 #    to the last line of that block), paste it at the top, change
@@ -62,3 +62,21 @@
   completed: "[Month Year]"
   description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
   photo: sample-three.jpg
+
+- id: sample-four
+  title: "[Artwork title 4]"
+  completed: "[Month Year]"
+  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
+  photo: sample-four.jpg
+
+- id: sample-five
+  title: "[Artwork title 5]"
+  completed: "[Month Year]"
+  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
+  photo: sample-five.jpg
+
+- id: sample-six
+  title: "[Artwork title 6]"
+  completed: "[Month Year]"
+  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
+  photo: sample-six.jpg
