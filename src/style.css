@@ -1,6 +1,6 @@
 /* Design tokens */
 :root{
-  --ink:#2B2B2B; --muted:#4A4239; --link:#476589; --paper:#F6F2EA; --dark:#1E1B18;
+  --ink:#2B2B2B; --muted:#4A4239; --paper:#F6F2EA; --dark:#1E1B18;
   --serif:Georgia,'Times New Roman',serif;
   --sans:'Atkinson Hyperlegible',Verdana,system-ui,sans-serif;
   --pad:24px;
@@ -8,58 +8,85 @@
 *{box-sizing:border-box}
 html{background:var(--bg,var(--paper));color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%;transition:background-color .6s ease}
 body{margin:0;min-height:100dvh;display:flex;flex-direction:column;font-size:20px;line-height:1.5}
-body.art{background:radial-gradient(ellipse 90% 520px at 50% 0,rgba(255,255,255,.75),rgba(255,255,255,0) 100%) no-repeat}
+/* Subtle corner glows from the artwork's colours (--grad is set per page). Fixed so it stays put while scrolling. */
+html::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--grad,var(--bg,var(--paper)))}
 a{color:inherit}
 :focus-visible{outline:4px solid #1F4E8C;outline-offset:2px}
 .wrap{width:100%;max-width:760px;margin:0 auto;padding-inline:var(--pad)}
+.wrap.wide{max-width:1600px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* Header */
-.top{view-transition-name:top;display:flex;align-items:center;justify-content:space-between;padding-top:20px;padding-bottom:8px}
-.name{margin:0;font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.2}
-.nav{display:inline-flex;align-items:center;min-height:44px;margin:-12px 0 -6px;font-size:16px;letter-spacing:.14em;color:var(--link);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:5px}
+.top{view-transition-name:top;display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:12px;padding-bottom:8px}
+/* Logo: "Paint By" upright, "Pops" in italic brick red. The logo font only has these letters (see src/fonts). */
+.logo,.nav{display:inline-flex;align-items:center;min-height:44px;line-height:1.2;color:inherit;text-decoration:none}
+.logo{font:600 24px/1 'Paint By Pops Logo',var(--serif);letter-spacing:-.01em;font-synthesis:none;white-space:nowrap}
+.logo em{font-weight:700;color:#C2462B}
+.nav{font-family:var(--serif);font-size:15px}
+.nav b{font-weight:700}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border:2px solid var(--ink);border-radius:10px;background:transparent;color:var(--ink);font:700 18px/1 var(--sans);text-decoration:none;cursor:pointer}
+/* Ghost caret buttons: light caret, solid black on hover */
+.btn.icon{width:44px;min-height:44px;padding:0;border:0;border-radius:8px;color:rgba(43,43,43,.62);transition:background-color .2s ease,color .2s ease}
+.btn.icon:hover{background:var(--ink);color:#fff}
+/* Arrow-key press: a lighter flash than hover */
+.btn.icon.pressed{background:rgba(43,43,43,.1);color:var(--ink);transition:none}
 
 /* Content */
-main{flex:1;padding-top:8px;padding-bottom:16px}
+main{flex:1;display:flex;flex-direction:column;padding-top:8px;padding-bottom:16px}
+.piece{padding-bottom:0}
 .photo{display:block;margin:0;border-radius:4px}
 .photo img{display:block;width:auto;height:auto;max-width:100%;max-height:52svh;margin:0 auto;border-radius:4px;background:var(--dom,#ddd);object-fit:contain}
-.meta{margin:16px 0 0;font-size:18px;color:var(--muted)}
 h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
-.sub{margin:6px 0 0;font-size:18px;color:var(--muted)}
+.sub{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.desc{font-family:var(--serif);font-size:17px;line-height:1.6}
 .desc p{margin:12px 0 0}
-.back{display:inline-flex;align-items:center;min-height:48px;font-size:18px;font-weight:700;text-underline-offset:5px}
+.back{display:inline-flex;align-items:center;align-self:flex-start;min-height:44px;font-size:15px;color:rgba(43,43,43,.78);text-decoration:none}
+.back:hover{color:var(--ink)}
 
-/* Bottom bar: thumbnails + Back / Next */
-.bar{position:sticky;bottom:0;background:var(--bg,var(--paper));padding-top:8px}
+/* Bottom bar: thumbnails on the left, Back / Next carets bottom right. Sticks to the bottom on narrow screens. */
+.bar{position:sticky;bottom:0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;margin:auto calc(-1 * var(--pad)) 0;padding:8px var(--pad) max(20px,env(safe-area-inset-bottom));background:var(--bg,var(--paper))}
 .bar::before{content:"";position:absolute;left:0;right:0;top:-16px;height:16px;background:linear-gradient(rgba(255,255,255,0),var(--bg,var(--paper)));pointer-events:none}
-.strip-label{margin:0;font-size:16px;color:var(--muted)}
-.thumbs{display:flex;gap:12px;margin:6px 0 0;padding:0;list-style:none}
-.thumb{display:block;width:64px;height:64px;border:3px solid transparent;border-radius:6px;overflow:hidden;background:var(--dom,#ddd)}
+.strip-label{margin:0;font-size:13px;color:var(--muted)}
+.thumbs{display:flex;gap:8px;margin:6px 0 0;padding:0;list-style:none}
+.thumb{display:block;width:48px;height:48px;border:2px solid transparent;border-radius:5px;overflow:hidden;background:var(--dom,#ddd)}
 .thumb[aria-current]{border-color:var(--ink)}
 .thumb img{display:block;width:100%;height:100%;object-fit:cover}
-.pager{display:flex;gap:16px;padding-top:16px;padding-bottom:max(32px,env(safe-area-inset-bottom))}
-.pager .btn{flex:1;min-height:64px;border-radius:12px;font-size:22px}
-.pager .solid,.full.solid{background:var(--ink);color:var(--paper)}
-.full{width:100%;min-height:64px;border-radius:12px;font-size:22px}
+.pager{display:flex;gap:4px;margin-left:auto}
 
 /* About */
-.byline{margin:6px 0 0;font-size:18px;color:var(--muted)}
-.article{margin-top:16px;line-height:1.55}
+.byline{margin:6px 0 0;font-size:15px;color:var(--muted)}
+.article{margin-top:16px;font-size:17px;line-height:1.6}
 .article::after{content:"";display:block;clear:both}
 .article figure{float:left;width:120px;margin:4px 16px 8px 0}
 .article figure img{display:block;width:100%;height:auto;border-radius:4px;background:var(--dom,#ddd)}
 .article p{margin:0 0 14px}
 
-/* Gallery page */
-.ghead{display:flex;align-items:center;justify-content:space-between;padding-top:20px;padding-bottom:12px}
-.ghead h1{margin:0;font-size:28px}
-.close{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:12px;background:var(--ink);border:2px solid var(--ink)}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 16px;margin:0;padding:8px 0 40px;list-style:none}
-.tile{display:flex;flex-direction:column;text-decoration:none}
-.tile .img{display:block;width:100%;aspect-ratio:1;border:3px solid transparent;border-radius:4px;overflow:hidden;background:var(--dom,#ddd)}
-.tile.current .img{border-color:var(--ink)}
-.tile img{display:block;width:100%;height:100%;object-fit:cover}
-.tile span.t{margin-top:8px;font-size:18px;font-weight:700;line-height:1.3}
+/* Home grid: 1 / 2 across on small screens (desktop below). No grid lines: the paintings' own edges separate them. */
+.home{padding-bottom:48px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);margin:8px 0 0;padding:0;list-style:none}
+.tile{position:relative;display:block;aspect-ratio:1}
+.tile img{position:absolute;top:12%;left:12%;width:76%;height:76%;object-fit:contain;transition:transform .4s ease}
+.tile:hover img{transform:scale(1.03)}
+@media (min-width:560px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* Desktop: the page never scrolls down. Two rows fill the window under the header, three columns
+   across, and later pieces continue to the right in a sideways-scrolling strip that runs to the
+   screen's left, right and bottom edges. Each photo fills its cell (cropped) and shrinks to show the
+   whole painting on hover, letterboxed on dark. --ar is the photo's width / height, set on each tile by the build. */
+@media (min-width:900px){
+  body:has(.home){height:100dvh;overflow:hidden}
+  .home{max-width:none;min-height:0;padding:0}
+  .home .grid{flex:1;min-height:0;margin:0;grid-template-columns:none;grid-template-rows:repeat(2,minmax(0,1fr));grid-auto-flow:column;grid-auto-columns:calc(100% / 3);overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
+  .home .grid::-webkit-scrollbar{display:none}
+  .home .tile{height:100%;aspect-ratio:auto;overflow:hidden;container-type:size;background:var(--dark)}
+  .home .tile img{top:50%;left:50%;width:max(100cqw,100cqh * var(--ar));height:max(100cqh,100cqw / var(--ar));translate:-50% -50%;transform:none;transition:width .5s ease,height .5s ease}
+  .home .tile:hover img,.home .tile:focus-visible img{width:min(100cqw,100cqh * var(--ar));height:min(100cqh,100cqw / var(--ar))}
+  .home .tile:focus-visible{outline-offset:-4px}
+}
+@media (min-width:900px) and (prefers-reduced-motion:reduce){
+  .home .tile img{transition:none}
+}
 
 /* Photo viewer */
 dialog#viewer{border:0;padding:0;width:100%;height:100%;max-width:none;max-height:none;background:var(--dark);color:var(--paper)}
@@ -76,29 +103,42 @@ dialog#viewer::backdrop{background:var(--dark)}
 @media (min-width:700px){
   :root{--pad:48px}
   body{font-size:26px}
-  .top{padding-top:32px}
-  .name{font-size:30px}
-  .nav{min-height:52px;margin:-14px 0 -8px;font-size:20px}
+  .top{padding-top:20px;padding-bottom:12px}
+  .logo{font-size:30px}
+  .nav{font-size:16px}
   .btn{min-height:56px;padding:0 28px;border-radius:12px;font-size:24px}
   .photo img{max-height:56svh}
-  .meta,.sub,.byline,.back{font-size:22px}
-  .meta{margin-top:20px}
+  .byline{font-size:16px}
+  .sub,.back{font-size:15px}
+  .desc{font-size:18px}
   h1{font-size:42px}
-  .back{min-height:56px}
-  .strip-label{font-size:20px}
-  .thumb{width:96px;height:96px}
-  .pager{padding-top:24px;padding-bottom:max(48px,env(safe-area-inset-bottom))}
-  .pager .btn,.full{min-height:80px;font-size:28px}
-  .article{margin-top:24px;line-height:1.55}
+  .strip-label{font-size:14px}
+  .thumb{width:56px;height:56px}
+  .bar{padding-bottom:max(32px,env(safe-area-inset-bottom))}
+  .article{margin-top:24px;font-size:18px}
   .article figure{width:220px;margin:6px 28px 12px 0}
   .article p{margin-bottom:20px}
-  .ghead{padding-top:32px;padding-bottom:16px}
-  .ghead h1{font-size:40px}
-  .close{width:72px;height:72px}
-  .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:32px 24px;padding-bottom:56px}
-  .tile span.t{font-size:24px;margin-top:10px}
+  .grid{margin-top:16px}
   .vbar{padding-top:32px;font-size:22px}
   .vclose{width:72px;height:72px}
+}
+
+/* Artwork pages, wide screens: painting on the left, details on the right */
+@media (min-width:1000px){
+  :root{--pad:32px}
+  /* Left column is a 4:3 frame as tall as the window allows (leaving the details column at least 300px).
+     Portrait photos and 4:3 landscape photos all fill its full height, so the right column never moves.
+     The details column takes the rest, one page margin away from the frame. */
+  .piece{flex:none;max-width:1600px;display:grid;grid-template-columns:min(calc((100svh - 160px) * 4 / 3),calc(100% - 300px - var(--pad))) minmax(300px,1fr);grid-template-rows:auto 1fr auto;column-gap:var(--pad);padding-bottom:48px}
+  /* Only the photo itself is clickable, not the empty frame around it. */
+  .piece .photo{grid-column:1;grid-row:1/-1;align-self:start;display:flex;align-items:flex-start;justify-content:center;aspect-ratio:4/3;pointer-events:none}
+  .piece .photo img{max-height:100%;margin:0;pointer-events:auto}
+  .piece .back{grid-column:2;grid-row:1;min-height:0;margin:-2px 0 20px;line-height:1.2}
+  .piece .info{grid-column:2;grid-row:2}
+  .piece h1{margin-top:-6px;font-size:32px}
+  .bar{position:static;background:none}
+  .bar::before{display:none}
+  .piece .bar{grid-column:2;grid-row:3;margin:24px 0 0;padding:16px 0 0;border-top:1px solid rgba(43,43,43,.15)}
 }
 
 /* Page-to-page blending (Safari 18.2+, Chrome, Edge). Older browsers simply switch. */

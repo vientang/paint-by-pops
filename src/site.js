@@ -1,19 +1,39 @@
 (function () {
-  var KEY = 'lastArt', last = null;
-  function get() { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } }
-  var here = document.body.getAttribute('data-art');
-  if (here) { try { sessionStorage.setItem(KEY, here); } catch (e) {} }
-  last = get();
+  // Home page on desktop: a mouse wheel scrolls the sideways strip of paintings (trackpads already can).
+  var grid = document.querySelector('.home .grid');
+  if (!grid) return;
+  grid.addEventListener('wheel', function (e) {
+    if (grid.scrollWidth <= grid.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    e.preventDefault();
+    grid.scrollLeft += e.deltaY;
+  }, { passive: false });
+})();
 
-  // HOME / close links return to the artwork you were last looking at.
-  [].forEach.call(document.querySelectorAll('[data-nav="home"],[data-close]'), function (a) {
-    if (last) a.setAttribute('href', last);
+(function () {
+  // Left / right arrow keys work like the caret buttons (artwork pages only, since only they have a pager).
+  var pager = document.querySelector('.pager');
+  if (!pager) return;
+  document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (document.querySelector('dialog[open]') || (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]'))) return;
+    var rel = { ArrowLeft: 'prev', ArrowRight: 'next' }[e.key];
+    var a = rel && pager.querySelector('a[rel=' + rel + ']');
+    if (!a) return;
+    e.preventDefault();
+    if (pager.classList.contains('going')) return;
+    // Flash the matching caret briefly so the key press reads as a button press, then go.
+    pager.classList.add('going');
+    a.classList.add('pressed');
+    setTimeout(function () { location.href = a.href; }, 150);
   });
-  // Mark the current piece in the Gallery grid.
-  [].forEach.call(document.querySelectorAll('.tile[data-path]'), function (t) {
-    if (t.getAttribute('data-path') === last) t.classList.add('current');
+  // Coming back via the browser's Back button can restore the page mid-flash, so reset it.
+  window.addEventListener('pageshow', function () {
+    pager.classList.remove('going');
+    [].forEach.call(pager.querySelectorAll('.pressed'), function (b) { b.classList.remove('pressed'); });
   });
+})();
 
+(function () {
   // Full-screen photo viewer (without JavaScript the photo just opens as a link).
   var dlg = document.getElementById('viewer');
   if (!dlg || !dlg.showModal) return;

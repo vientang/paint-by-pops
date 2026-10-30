@@ -43,26 +43,56 @@ function hslToRgb(h, s, l) {
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
   return [f(p, q, h + 1 / 3) * 255, f(p, q, h) * 255, f(p, q, h - 1 / 3) * 255];
 }
-// Finds the artwork's main colour, then makes a very light tint of the OPPOSITE colour.
-async function analyze(buf) {
-  const { data } = await sharp(buf).rotate().resize(64, 64, { fit: 'inside' }).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+const tint = (h, s, l) => hex(hslToRgb(h, s, l));
+const PAPER_TINTS = [PAPER, '#FBF9F4'];
+// Finds the artwork's main colours (up to three), then makes very light, soft tints of their OPPOSITES.
+// The first tint is the base background; the others are slightly lighter and glow in from the corners.
+// Strongest colourful hue in part of the image (x0..x1, y0..y1 as fractions), weighting vivid mid-tones; null if it's all grey.
+function dominant(px, W, H, [x0, x1, y0, y1] = [0, 1, 0, 1]) {
   const BINS = 24, bins = Array.from({ length: BINS }, () => ({ w: 0, r: 0, g: 0, b: 0 }));
-  let sr = 0, sg = 0, sb = 0, n = 0, total = 0;
-  for (let i = 0; i < data.length; i += 3) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    sr += r; sg += g; sb += b; n++;
+  let total = 0, n = 0;
+  for (let y = Math.floor(y0 * H); y < Math.ceil(y1 * H); y++) for (let x = Math.floor(x0 * W); x < Math.ceil(x1 * W); x++) {
+    const i = (y * W + x) * 3, r = px[i], g = px[i + 1], b = px[i + 2];
     const [h, s, l] = rgbToHsl(r, g, b), wt = s * (1 - Math.abs(2 * l - 1));
+    n++;
     if (wt < 0.08) continue;
     const bin = bins[Math.floor(h * BINS) % BINS];
     bin.w += wt; bin.r += r * wt; bin.g += g * wt; bin.b += b * wt; total += wt;
   }
-  const mean = [sr / n, sg / n, sb / n];
-  const best = bins.reduce((a, b) => (b.w > a.w ? b : a));
-  // Mostly grey / black-and-white art has no meaningful opposite colour: use soft paper.
-  if (total / n < 0.04 || best.w === 0) return { dom: hex(mean), bg: PAPER };
-  const dom = [best.r / best.w, best.g / best.w, best.b / best.w];
-  const [h] = rgbToHsl(...dom);
-  return { dom: hex(dom), bg: hex(hslToRgb((h + 0.5) % 1, 0.40, 0.92)) };
+  const top = bins.sort((a, b) => b.w - a.w)[0];
+  // Mostly grey / black-and-white has no meaningful opposite colour.
+  if (total / n < 0.04 || top.w === 0) return null;
+  const rgb = [top.r / top.w, top.g / top.w, top.b / top.w];
+  return { rgb, hue: rgbToHsl(...rgb)[0] };
+}
+// Background tints: the opposite of the painting's main colour, plus a lighter glow for each of the
+// bottom-left and top-right page corners, taken from the opposite of that corner of the painting.
+async function analyze(buf) {
+  const { data, info } = await sharp(buf).rotate().resize(64, 64, { fit: 'inside' }).removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+  const all = dominant(data, info.width, info.height);
+  if (!all) {
+    let sr = 0, sg = 0, sb = 0;
+    for (let i = 0; i < data.length; i += 3) { sr += data[i]; sg += data[i + 1]; sb += data[i + 2]; }
+    const n = data.length / 3;
+    return { dom: hex([sr / n, sg / n, sb / n]), tints: PAPER_TINTS };
+  }
+  const opp = (d) => ((d || all).hue + 0.5) % 1;
+  const corner = (r) => tint(opp(dominant(data, info.width, info.height, r)), 0.3, 0.86);
+  const tints = [tint(opp(all), 0.34, 0.8), corner([0, 0.4, 0.6, 1]), corner([0.6, 1, 0, 0.4])];
+  return { dom: hex(all.rgb), tints };
+}
+// Page background: base colour, with soft glows of the lighter tints from the top-right and bottom-left corners.
+function palette(tints) {
+  const [base, ...light] = tints;
+  if (light.length === 0) return { bg: base, grad: base };
+  const glow = (at, c) => `radial-gradient(circle at ${at},${c},transparent 70%)`;
+  return { bg: base, grad: `${glow('100% 0', light.at(-1))},${glow('0 100%', light[0])},${base}` };
+}
+// A hand-picked "background" colour gets a slightly lighter shade of itself for the gradient.
+function customTints(c) {
+  if (!/^#[0-9a-f]{6}$/i.test(c)) return [c];
+  const [h, s, l] = rgbToHsl(...[1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)));
+  return [c, tint(h, s, Math.min(l + 0.04, 0.98))];
 }
 
 /* ───────────── images ───────────── */
@@ -101,19 +131,29 @@ async function processImage(file, label) {
   return result;
 }
 
+// Photos fill the artwork page's 4:3 frame only if they're no wider than 4:3 (portrait and square are fine).
+const warnings = [];
+function checkShape(im, file) {
+  if (im.w / im.h > (4 / 3) * 1.01) warnings.push(`${file} is wider than 4:3, so it will show a little shorter than the other photos. Crop it to 4:3 to fix.`);
+}
+
 /* ───────────── HTML pieces ───────────── */
 const minCss = (c) => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};,])\s*/g, '$1').trim();
 const minJs = (j) => j.replace(/^\s*\/\/.*$/gm, '').replace(/\n\s*/g, ' ').trim();
 const srcset = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
 const midOf = (list) => list[Math.min(1, list.length - 1)].url;
-const SIZES_MAIN = '(min-width:700px) 664px, calc(100vw - 48px)';
+const SIZES_MAIN = '(min-width:1600px) 1204px, (min-width:1000px) calc(100vw - 396px), (min-width:700px) 664px, calc(100vw - 48px)';
+const SIZES_GRID = '(min-width:900px) 50vw, (min-width:560px) 35vw, 70vw';
 
+const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 const X_ICON = (stroke, size = 28) => `<svg width="${size}" height="${size}" viewBox="0 0 28 28" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6 L22 22 M22 6 L6 22"/></svg>`;
 
 const mainImg = (im, alt, eager) =>
   `<img src="${midOf(im.page)}" srcset="${srcset(im.page)}" sizes="${SIZES_MAIN}" width="${im.w}" height="${im.h}" alt="${esc(alt)}" style="--dom:${im.dom}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
 const thumbImg = (im, sizes, alt = '') =>
   `<img src="${im.thumb[0].url}" srcset="${srcset(im.thumb)}" sizes="${sizes}" width="${im.w}" height="${im.h}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
+const gridImg = (im, alt, eager) =>
+  `<img src="${midOf(im.page)}" srcset="${srcset(im.page)}" sizes="${SIZES_GRID}" width="${im.w}" height="${im.h}" alt="${esc(alt)}" ${eager ? '' : 'loading="lazy" '}decoding="async">`;
 const preloadImg = (im) =>
   `<img src="${midOf(im.page)}" srcset="${srcset(im.page)}" sizes="${SIZES_MAIN}" alt="" loading="eager" fetchpriority="low" decoding="async">`;
 
@@ -125,6 +165,7 @@ async function main() {
   if (!Array.isArray(artworks) || artworks.length === 0) fail('content/artworks.yml has no artworks. Add at least one block that starts with "- id:".');
   const siteUrl = String(site.url || '').replace(/\/+$/, '');
   const artist = String(site.artist || 'Artist Name');
+  const brand = 'Paint By Pops';
 
   // Validate
   const seen = new Set();
@@ -146,20 +187,32 @@ async function main() {
   // Fonts (self-hosted so nothing slow loads from elsewhere)
   const fontDir = path.join(ROOT, 'node_modules/@fontsource/atkinson-hyperlegible/files');
   for (const w of [400, 700]) await fs.copyFile(path.join(fontDir, `atkinson-hyperlegible-latin-${w}-normal.woff2`), path.join(DIST, `fonts/atkinson-${w}.woff2`));
+  // Logo font: Fraunces, cut down to just the letters in "Paint By Pops" (src/fonts). Browsers keep /fonts/ for a year,
+  // so the file name carries a fingerprint of its contents and a changed file gets a fresh name.
+  const logoFont = {};
+  for (const v of ['upright', 'italic']) {
+    const data = await fs.readFile(path.join(ROOT, `src/fonts/logo-${v}.woff2`));
+    logoFont[v] = `/fonts/logo-${v}.${crypto.createHash('sha1').update(data).digest('hex').slice(0, 8)}.woff2`;
+    await fs.writeFile(path.join(DIST, logoFont[v]), data);
+  }
 
   // Images
   for (const a of artworks) {
     a.id = String(a.id);
     a.img = await processImage(path.join(ROOT, 'photos/artworks', String(a.photo)), `"${a.title}"`);
-    a.bgColor = a.background || a.img.bg;
+    a.pal = palette(a.background ? customTints(String(a.background)) : a.img.tints);
     a.extras = a.extras || [];
     for (const x of a.extras) x.img = await processImage(path.join(ROOT, 'photos/extras', String(x.photo)), `an extra photo of "${a.title}"`);
+    checkShape(a.img, `photos/artworks/${a.photo}`);
+    a.extras.forEach((x) => checkShape(x.img, `photos/extras/${x.photo}`));
   }
   const about = site.about_photo ? await processImage(path.join(ROOT, 'photos', String(site.about_photo)), 'the About page') : null;
 
   const css = minCss(await fs.readFile(path.join(ROOT, 'src/style.css'), 'utf8'));
   const js = minJs(await fs.readFile(path.join(ROOT, 'src/site.js'), 'utf8'));
-  const fontCss = [400, 700].map((w) => `@font-face{font-family:'Atkinson Hyperlegible';font-weight:${w};font-display:swap;src:url(/fonts/atkinson-${w}.woff2) format('woff2')}`).join('');
+  const fontCss = [400, 700].map((w) => `@font-face{font-family:'Atkinson Hyperlegible';font-weight:${w};font-display:swap;src:url(/fonts/atkinson-${w}.woff2) format('woff2')}`).join('')
+    + `@font-face{font-family:'Paint By Pops Logo';font-weight:600;font-display:swap;src:url(${logoFont.upright}) format('woff2')}`
+    + `@font-face{font-family:'Paint By Pops Logo';font-style:italic;font-weight:700;font-display:swap;src:url(${logoFont.italic}) format('woff2')}`;
 
   const out = async (rel_, html) => {
     const file = path.join(DIST, rel_);
@@ -167,25 +220,26 @@ async function main() {
     await fs.writeFile(file, html);
   };
 
-  const page = ({ title, desc, bg, body, art, canonical, ogImage, head = '', viewer = false }) => `<!doctype html>
+  const page = ({ title, desc, pal, body, canonical, ogImage, head = '', viewer = false }) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
-${desc ? `<meta name="description" content="${esc(desc)}">` : ''}<meta name="theme-color" content="${bg}">
+${desc ? `<meta name="description" content="${esc(desc)}">` : ''}<meta name="theme-color" content="${pal.bg}">
 ${canonical && siteUrl ? `<link rel="canonical" href="${siteUrl}${canonical}">` : ''}
 ${siteUrl ? `<meta property="og:title" content="${esc(title)}"><meta property="og:type" content="website">${ogImage ? `<meta property="og:image" content="${siteUrl}${ogImage}">` : ''}` : ''}
 <link rel="preload" href="/fonts/atkinson-400.woff2" as="font" type="font/woff2" crossorigin>
-<style>${fontCss}:root{--bg:${bg}}${css}</style>${head}
-</head><body class="${art ? 'art' : ''}"${art ? ` data-art="${art}"` : ''}>
+<link rel="preload" href="${logoFont.upright}" as="font" type="font/woff2" crossorigin><link rel="preload" href="${logoFont.italic}" as="font" type="font/woff2" crossorigin>
+<style>${fontCss}:root{--bg:${pal.bg};--grad:${pal.grad}}${css}</style>${head}
+</head><body>
 ${body}
 ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
-  const header = (label, href, nav) => `<header class="top wrap"><div><div class="name">${esc(artist)}</div><a class="nav" href="${href}" data-nav="${nav}">${label}</a></div><a class="btn" href="/gallery/">Gallery</a></header>`;
+  const header = (current) => `<header class="top wrap wide"><a class="logo" href="/"><span>Paint By <em>Pops</em></span></a><a class="nav" href="/about/"${current === 'about' ? ' aria-current="page"' : ''}><span>About the artist <b>${esc(artist)}</b></span></a></header>`;
   const paras = (t) => `<div class="desc">${paragraphs(t)}</div>`;
 
   const strip = (a, current) => a.extras.length === 0 ? '' : `<div class="strip"><p class="strip-label">More about this piece</p><ul class="thumbs">${a.extras.map((x, j) =>
     `<li><a class="thumb" href="/art/${a.id}/${j + 1}/" aria-label="${esc(x.kind || 'Photo')}, photo ${j + 1} of ${a.extras.length}"${current === j ? ' aria-current="page"' : ''} style="--dom:${x.img.dom}">${thumbImg(x.img, '96px')}</a></li>`).join('')}</ul></div>`;
 
-  const bar = (innerStrip, backHref, nextHref) => `<footer class="bar"><div class="wrap">${innerStrip}<nav class="pager" aria-label="Previous and next"><a class="btn" href="${backHref}" rel="prev">← Back</a><a class="btn solid" href="${nextHref}" rel="next">Next →</a></nav></div></footer>`;
+  const bar = (innerStrip, backHref, nextHref) => `<div class="bar">${innerStrip}<nav class="pager" aria-label="Previous and next"><a class="btn icon" href="${backHref}" rel="prev" aria-label="Previous">${CARET('M15 5 L8 12 L15 19')}</a><a class="btn icon" href="${nextHref}" rel="next" aria-label="Next">${CARET('M9 5 L16 12 L9 19')}</a></nav></div>`;
 
   const N = artworks.length;
   const artHref = (a) => `/art/${a.id}/`;
@@ -196,55 +250,52 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const alt = a.alt || a.title;
     const head = N > 1 ? `\n<link rel="prefetch" href="${artHref(next)}"><link rel="prefetch" href="${artHref(prev)}">` : '';
     const preload = N > 1 ? `<div hidden>${preloadImg(next.img)}${prev === next ? '' : preloadImg(prev.img)}</div>` : '';
-    const body = `${header('ABOUT', '/about/', 'about')}
-<main class="wrap"><a class="photo" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>
-<p class="meta">${i + 1} of ${N} · Tap photo to enlarge</p>
-<h1>${esc(a.title)}</h1>${a.completed ? `<p class="sub">Completed ${esc(a.completed)}</p>` : ''}
-${paras(a.description)}</main>
-${bar(strip(a, -1), artHref(prev), artHref(next))}${preload}`;
-    const html = page({ title: `${a.title} · ${artist}`, desc: String(a.description || '').slice(0, 160), bg: a.bgColor, body, art: artHref(a), canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
+    const body = `${header()}
+<main class="wrap piece"><a class="photo" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>
+<div class="info"><h1>${esc(a.title)}</h1>${a.completed ? `<p class="sub">Completed ${esc(a.completed)}</p>` : ''}
+${paras(a.description)}</div>
+${bar(strip(a, -1), artHref(prev), artHref(next))}</main>${preload}`;
+    const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
     await out(`art/${a.id}/index.html`, html);
-    if (i === 0) await out('index.html', html);
 
     const M = a.extras.length;
     for (let j = 0; j < M; j++) {
       const x = a.extras[j], xalt = x.alt || x.title || x.kind || a.title;
       const pj = (j - 1 + M) % M, nj = (j + 1) % M;
-      const xbody = `${header('ABOUT', '/about/', 'about')}
-<main class="wrap"><a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
+      const xbody = `${header()}
+<main class="wrap piece"><a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
 <a class="photo" href="${x.img.large}" data-large="${x.img.large}" aria-label="Enlarge photo: ${esc(xalt)}">${mainImg(x.img, xalt, true)}</a>
-<p class="meta">${j + 1} of ${M} · Tap photo to enlarge</p>
-<h1>${esc(x.title || x.kind || a.title)}</h1>${x.kind ? `<p class="sub">${esc(x.kind)}</p>` : ''}
-${paras(x.description)}</main>
-${bar(strip(a, j), `/art/${a.id}/${pj + 1}/`, `/art/${a.id}/${nj + 1}/`)}`;
-      await out(`art/${a.id}/${j + 1}/index.html`, page({ title: `${x.title || x.kind} · ${a.title} · ${artist}`, desc: String(x.description || '').slice(0, 160), bg: a.bgColor, body: xbody, art: artHref(a), canonical: `/art/${a.id}/${j + 1}/`, ogImage: x.img.page[x.img.page.length - 1].url, viewer: true }));
+<div class="info"><h1>${esc(x.title || x.kind || a.title)}</h1>${x.kind ? `<p class="sub">${esc(x.kind)}</p>` : ''}
+${paras(x.description)}</div>
+${bar(strip(a, j), `/art/${a.id}/${pj + 1}/`, `/art/${a.id}/${nj + 1}/`)}</main>`;
+      await out(`art/${a.id}/${j + 1}/index.html`, page({ title: `${x.title || x.kind} · ${a.title} · ${brand}`, desc: String(x.description || '').slice(0, 160), pal: a.pal, body: xbody, canonical: `/art/${a.id}/${j + 1}/`, ogImage: x.img.page[x.img.page.length - 1].url, viewer: true }));
     }
   }
 
   // About
   const byline = [site.location, site.medium].filter(Boolean).map(esc).join(' · ');
-  const aboutBody = `${header('HOME', '/', 'home')}
+  const aboutBody = `${header('about')}
 <main class="wrap"><h1>About ${esc(artist)}</h1>${byline ? `<p class="byline">${byline}</p>` : ''}
-<div class="article">${about ? `<figure style="--dom:${about.dom}">${thumbImg(about, '(min-width:700px) 220px, 120px', `Photo of ${artist}`)}</figure>` : ''}${paragraphs(site.bio)}</div></main>
-<footer class="bar"><div class="wrap"><div class="pager"><a class="btn solid" href="/" data-nav="home">Back to the artwork</a></div></div></footer>`;
-  await out('about/index.html', page({ title: `About · ${artist}`, desc: `About ${artist}`, bg: PAPER, body: aboutBody, canonical: '/about/' }));
+<div class="article">${about ? `<figure style="--dom:${about.dom}">${thumbImg(about, '(min-width:700px) 220px, 120px', `Photo of ${artist}`)}</figure>` : ''}${paragraphs(site.bio)}</div></main>`;
+  await out('about/index.html', page({ title: `About the artist · ${brand}`, desc: `About ${artist}`, pal: palette(PAPER_TINTS), body: aboutBody, canonical: '/about/' }));
 
-  // Gallery
-  const tiles = artworks.map((a) => `<li><a class="tile" href="${artHref(a)}" data-path="${artHref(a)}" style="--dom:${a.img.dom}"><span class="img">${thumbImg(a.img, '(min-width:700px) 220px, 45vw', a.alt || a.title)}</span><span class="t">${esc(a.title)}</span></a></li>`).join('');
-  await out('gallery/index.html', page({ title: `Gallery · ${artist}`, desc: `All artwork by ${artist}`, bg: PAPER, canonical: '/gallery/',
-    body: `<header class="ghead wrap"><h1>Gallery</h1><a class="close" href="/" data-close aria-label="Close gallery">${X_ICON('#F6F2EA')}</a></header>\n<main class="wrap"><ul class="grid">${tiles}</ul></main>` }));
+  // Home: grid of every piece, on the same soft paper as the About page
+  const tiles = artworks.map((a, i) => `<li><a class="tile" href="${artHref(a)}" style="--ar:${(a.img.w / a.img.h).toFixed(4)}" aria-label="${esc(a.title)}">${gridImg(a.img, a.alt || a.title, i < 3)}</a></li>`).join('');
+  await out('index.html', page({ title: brand, desc: `Artwork by ${artist}`, pal: palette(PAPER_TINTS), canonical: '/', ogImage: artworks[0].img.page[artworks[0].img.page.length - 1].url,
+    body: `${header()}\n<main class="wrap wide home"><h1 class="vh">Artwork by ${esc(artist)}</h1><ul class="grid">${tiles}</ul></main>` }));
 
   // 404 + hosting files
-  await out('404.html', page({ title: `Page not found · ${artist}`, bg: PAPER, body: `${header('HOME', '/', 'home')}<main class="wrap"><h1>Page not found</h1><p>That page doesn’t exist. <a href="/">Go to the home page</a>.</p></main>` }));
+  await out('404.html', page({ title: `Page not found · ${brand}`, pal: palette(PAPER_TINTS), body: `${header()}<main class="wrap"><h1>Page not found</h1><p>That page doesn’t exist. <a href="/">Go to the home page</a>.</p></main>` }));
   await out('_headers', `/img/*\n  Cache-Control: public, max-age=31536000, immutable\n/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n`);
   if (siteUrl) {
-    const urls = ['/', '/about/', '/gallery/', ...artworks.flatMap((a) => [artHref(a), ...a.extras.map((_, j) => `/art/${a.id}/${j + 1}/`)])];
+    const urls = ['/', '/about/', ...artworks.flatMap((a) => [artHref(a), ...a.extras.map((_, j) => `/art/${a.id}/${j + 1}/`)])];
     await out('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `<url><loc>${siteUrl}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
     await out('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${siteUrl}/sitemap.xml\n`);
   }
 
   const X = artworks.reduce((n, a) => n + a.extras.length, 0);
   console.log(`\n✔ Built ${N} artwork${N === 1 ? '' : 's'}, ${X} extra photo${X === 1 ? '' : 's'} and ${written.size} image files into /dist\n`);
+  if (warnings.length) console.log(`${warnings.map((w) => `⚠ ${w}`).join('\n')}\n`);
 }
 
 main().catch((e) => {
