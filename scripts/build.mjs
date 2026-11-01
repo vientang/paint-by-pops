@@ -147,7 +147,7 @@ const SIZES_GRID = '(min-width:560px) 50vw, 100vw';
 
 const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 const LEFT = 'M15 5 L8 12 L15 19', RIGHT = 'M9 5 L16 12 L9 19', DOWN = 'M5 9 L12 16 L19 9', UP = 'M5 15 L12 8 L19 15';
-const X_ICON = (stroke, size = 28) => `<svg width="${size}" height="${size}" viewBox="0 0 28 28" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6 L22 22 M22 6 L6 22"/></svg>`;
+const X_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>`;
 
 const mainImg = (im, alt, eager) =>
   `<img src="${midOf(im.page)}" srcset="${srcset(im.page)}" sizes="${SIZES_MAIN}" width="${im.w}" height="${im.h}" alt="${esc(alt)}" style="--dom:${im.dom}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
@@ -158,7 +158,7 @@ const gridImg = (im, alt, eager) =>
 const preloadImg = (im) =>
   `<img src="${midOf(im.page)}" srcset="${srcset(im.page)}" sizes="${SIZES_MAIN}" alt="" loading="eager" fetchpriority="low" decoding="async">`;
 
-const VIEWER = `<dialog id="viewer" aria-label="Photo viewer"><div class="vbar"><span data-hint>Tap photo to zoom in</span><button class="vclose" type="button" data-vclose aria-label="Close photo">${X_ICON('#2B2B2B')}</button></div><div class="vscroll"><img alt=""></div></dialog>`;
+const VIEWER = `<dialog id="viewer" aria-label="Photo viewer"><div class="vbar"><span data-hint>Tap photo to zoom in</span><button class="vclose" type="button" data-vclose aria-label="Close photo">${X_ICON}</button></div><div class="vscroll"><img alt=""></div></dialog>`;
 
 async function main() {
   const site = (await readYaml('content/site.yml')) || {};

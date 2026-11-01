@@ -101,7 +101,9 @@ dialog#viewer{border:0;padding:0;width:100%;height:100%;max-width:none;max-heigh
 dialog#viewer[open]{display:flex;flex-direction:column}
 dialog#viewer::backdrop{background:var(--dark)}
 .vbar{display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad) 12px;font-size:18px}
-.vclose{width:56px;height:56px;padding:0;display:flex;align-items:center;justify-content:center;border:2px solid var(--paper);border-radius:12px;background:var(--paper);cursor:pointer}
+/* Close: a round see-through light button, like the carets over paintings but for the dark viewer. */
+.vclose{flex:none;width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;border:0;border-radius:22px;background:rgba(246,242,234,.14);color:rgba(246,242,234,.92);cursor:pointer;transition:background-color .2s ease}
+.vclose:hover{background:rgba(246,242,234,.26)}
 .vscroll{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:0 12px 24px;touch-action:pan-x pan-y pinch-zoom}
 .vscroll img{display:block;max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
 .vscroll.zoom{display:block}
@@ -128,7 +130,6 @@ dialog#viewer::backdrop{background:var(--dark)}
   .article p{margin-bottom:20px}
   .grid{margin-top:16px}
   .vbar{padding-top:32px;font-size:22px}
-  .vclose{width:72px;height:72px}
 }
 
 /* Artwork pages, phones and tablets. Every painting hangs on the page colour, inset with a soft shadow,
