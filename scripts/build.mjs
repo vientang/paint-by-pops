@@ -143,9 +143,10 @@ const minJs = (j) => j.replace(/^\s*\/\/.*$/gm, '').replace(/\n\s*/g, ' ').trim(
 const srcset = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
 const midOf = (list) => list[Math.min(1, list.length - 1)].url;
 const SIZES_MAIN = '(min-width:1600px) 1204px, (min-width:1000px) calc(100vw - 396px), (min-width:700px) 664px, calc(100vw - 48px)';
-const SIZES_GRID = '(min-width:900px) 50vw, (min-width:560px) 35vw, 70vw';
+const SIZES_GRID = '(min-width:560px) 50vw, 100vw';
 
 const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const LEFT = 'M15 5 L8 12 L15 19', RIGHT = 'M9 5 L16 12 L9 19', DOWN = 'M5 9 L12 16 L19 9', UP = 'M5 15 L12 8 L19 15';
 const X_ICON = (stroke, size = 28) => `<svg width="${size}" height="${size}" viewBox="0 0 28 28" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6 L22 22 M22 6 L6 22"/></svg>`;
 
 const mainImg = (im, alt, eager) =>
@@ -233,13 +234,22 @@ ${siteUrl ? `<meta property="og:title" content="${esc(title)}"><meta property="o
 ${body}
 ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
-  const header = (current) => `<header class="top wrap wide"><a class="logo" href="/"><span>Paint By <em>Pops</em></span></a><a class="nav" href="/about/"${current === 'about' ? ' aria-current="page"' : ''}><span>About the artist <b>${esc(artist)}</b></span></a></header>`;
-  const paras = (t) => `<div class="desc">${paragraphs(t)}</div>`;
+  const header = (current) => `<header class="top wrap wide"><a class="logo" href="/"><span>Paint By <em>Pops</em></span></a><a class="nav" href="/about/"${current === 'about' ? ' aria-current="page"' : ''}><span>About <span class="long">the artist </span><b>${esc(artist)}</b></span></a></header>`;
+  // Description. On phones and tablets site.js cuts it off after three lines and shows the "more" button
+  // (the two empty spans make room for it at the end of the third line).
+  const paras = (t) => `<div class="desc"><div class="desc-text"><span class="more-room" aria-hidden="true"></span><span class="more-spot" aria-hidden="true"></span>${paragraphs(t)}</div><button class="more" type="button" aria-expanded="false" aria-label="Read the full description"><span aria-hidden="true">…</span>${CARET(DOWN)}</button></div>`;
+  const sub = (text, i, n) => text || n > 1 ? `<p class="sub">${text ? `<span>${esc(text)}</span>` : ''}${n > 1 ? `<span class="count">${i + 1} of ${n}</span>` : ''}</p>` : '';
+  // The painting. On phones and tablets it sits in a fixed frame between its neighbours, which show while
+  // swiping, with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
+  // so the next page is instant).
+  const side = (im) => `<div class="slide side" aria-hidden="true">${preloadImg(im)}</div>`;
+  const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
+  const LESS = `<button class="less" type="button" aria-label="Close the full description">${CARET(UP)}</button>`;
 
   const strip = (a, current) => a.extras.length === 0 ? '' : `<div class="strip"><p class="strip-label">More about this piece</p><ul class="thumbs">${a.extras.map((x, j) =>
     `<li><a class="thumb" href="/art/${a.id}/${j + 1}/" aria-label="${esc(x.kind || 'Photo')}, photo ${j + 1} of ${a.extras.length}"${current === j ? ' aria-current="page"' : ''} style="--dom:${x.img.dom}">${thumbImg(x.img, '96px')}</a></li>`).join('')}</ul></div>`;
 
-  const bar = (innerStrip, backHref, nextHref) => `<div class="bar">${innerStrip}<nav class="pager" aria-label="Previous and next"><a class="btn icon" href="${backHref}" rel="prev" aria-label="Previous">${CARET('M15 5 L8 12 L15 19')}</a><a class="btn icon" href="${nextHref}" rel="next" aria-label="Next">${CARET('M9 5 L16 12 L9 19')}</a></nav></div>`;
+  const bar = (innerStrip, backHref, nextHref) => `<div class="bar">${innerStrip}<nav class="pager" aria-label="Previous and next"><a class="btn icon" href="${backHref}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="btn icon" href="${nextHref}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav></div>`;
 
   const N = artworks.length;
   const artHref = (a) => `/art/${a.id}/`;
@@ -249,12 +259,12 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const a = artworks[i], prev = artworks[(i - 1 + N) % N], next = artworks[(i + 1) % N];
     const alt = a.alt || a.title;
     const head = N > 1 ? `\n<link rel="prefetch" href="${artHref(next)}"><link rel="prefetch" href="${artHref(prev)}">` : '';
-    const preload = N > 1 ? `<div hidden>${preloadImg(next.img)}${prev === next ? '' : preloadImg(prev.img)}</div>` : '';
+    const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
     const body = `${header()}
-<main class="wrap piece"><a class="photo" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>
-<div class="info"><h1>${esc(a.title)}</h1>${a.completed ? `<p class="sub">Completed ${esc(a.completed)}</p>` : ''}
+<main class="wrap piece">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
+<div class="panel">${LESS}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed && `Completed ${a.completed}`, i, N)}
 ${paras(a.description)}</div>
-${bar(strip(a, -1), artHref(prev), artHref(next))}</main>${preload}`;
+${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
     const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
     await out(`art/${a.id}/index.html`, html);
 
@@ -262,12 +272,14 @@ ${bar(strip(a, -1), artHref(prev), artHref(next))}</main>${preload}`;
     for (let j = 0; j < M; j++) {
       const x = a.extras[j], xalt = x.alt || x.title || x.kind || a.title;
       const pj = (j - 1 + M) % M, nj = (j + 1) % M;
+      const xhref = (k) => `/art/${a.id}/${k + 1}/`;
+      const xphoto = `<a class="photo slide" href="${x.img.large}" data-large="${x.img.large}" aria-label="Enlarge photo: ${esc(xalt)}">${mainImg(x.img, xalt, true)}</a>`;
       const xbody = `${header()}
-<main class="wrap piece"><a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
-<a class="photo" href="${x.img.large}" data-large="${x.img.large}" aria-label="Enlarge photo: ${esc(xalt)}">${mainImg(x.img, xalt, true)}</a>
-<div class="info"><h1>${esc(x.title || x.kind || a.title)}</h1>${x.kind ? `<p class="sub">${esc(x.kind)}</p>` : ''}
+<main class="wrap piece">${M > 1 ? frame(xphoto, { img: a.extras[pj].img, href: xhref(pj) }, { img: a.extras[nj].img, href: xhref(nj) }) : frame(xphoto)}
+<div class="panel">${LESS}<a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
+<div class="info"><h1>${esc(x.title || x.kind || a.title)}</h1>${sub(x.kind, j, M)}
 ${paras(x.description)}</div>
-${bar(strip(a, j), `/art/${a.id}/${pj + 1}/`, `/art/${a.id}/${nj + 1}/`)}</main>`;
+${bar(strip(a, j), xhref(pj), xhref(nj))}</div></main>`;
       await out(`art/${a.id}/${j + 1}/index.html`, page({ title: `${x.title || x.kind} · ${a.title} · ${brand}`, desc: String(x.description || '').slice(0, 160), pal: a.pal, body: xbody, canonical: `/art/${a.id}/${j + 1}/`, ogImage: x.img.page[x.img.page.length - 1].url, viewer: true }));
     }
   }
@@ -282,7 +294,8 @@ ${bar(strip(a, j), `/art/${a.id}/${pj + 1}/`, `/art/${a.id}/${nj + 1}/`)}</main>
   // Home: grid of every piece, on the same soft paper as the About page
   const tiles = artworks.map((a, i) => `<li><a class="tile" href="${artHref(a)}" style="--ar:${(a.img.w / a.img.h).toFixed(4)}" aria-label="${esc(a.title)}">${gridImg(a.img, a.alt || a.title, i < 3)}</a></li>`).join('');
   await out('index.html', page({ title: brand, desc: `Artwork by ${artist}`, pal: palette(PAPER_TINTS), canonical: '/', ogImage: artworks[0].img.page[artworks[0].img.page.length - 1].url,
-    body: `${header()}\n<main class="wrap wide home"><h1 class="vh">Artwork by ${esc(artist)}</h1><ul class="grid">${tiles}</ul></main>` }));
+    body: `${header()}\n<main class="wrap wide home"><h1 class="vh">Artwork by ${esc(artist)}</h1><ul class="grid">${tiles}</ul></main>`
+      + `<button class="pgdn" type="button" aria-label="Scroll down one screen" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5 L12 11 L18 5 M6 13 L12 19 L18 13"/></svg></button>` }));
 
   // 404 + hosting files
   await out('404.html', page({ title: `Page not found · ${brand}`, pal: palette(PAPER_TINTS), body: `${header()}<main class="wrap"><h1>Page not found</h1><p>That page doesn’t exist. <a href="/">Go to the home page</a>.</p></main>` }));
