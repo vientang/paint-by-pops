@@ -63,26 +63,50 @@ h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
 .article p{margin:0 0 14px}
 
 /* Home grid on phones: one painting per row, edge to edge, each whole at its own shape.
-   Tablets: two across, cropped to 4:5. Desktop below. No grid lines: the paintings' own edges separate them. */
-.home{padding:0}
+   No grid lines anywhere: the paintings' own edges separate them. */
+.home{position:relative;padding:0}
 .home .grid{display:grid;grid-template-columns:minmax(0,1fr);margin:0;padding:0;list-style:none}
 .tile{position:relative;display:block;aspect-ratio:var(--ar,1);overflow:hidden;background:var(--dark)}
 .tile img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
-@media (min-width:560px){
+/* Phones turned sideways: two across, cropped to 4:5. */
+@media (min-width:560px) and (orientation:landscape){
   .home .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .tile{aspect-ratio:4/5}
+}
+/* Tablets standing up (and other tall screens): two columns, each painting whole at its own shape.
+   The build sends each piece to whichever column is shorter so far and sets --o (its place: left column
+   first, then the right), and --mh on the list (the taller column's height, in column widths). The list is
+   a column-wrapping flexbox exactly that tall; ::after is a full-height break between the two columns.
+   The page order stays 1, 2, 3… for screen readers and the Tab key. */
+@media (min-width:560px) and (orientation:portrait){
+  .home{container-type:inline-size}
+  .home .grid{display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;height:calc(50cqw * var(--mh,1) + 2px)}
+  .home .grid li{width:50%;order:var(--o,0)}
+  .home .grid::after{content:"";flex-basis:100%;width:0;order:999}
 }
 /* Floating "next screen" button (phones and tablets). site.js shows it, scrolls one screen per press and
    fades it out at the bottom. Ordinary scrolling is left alone. */
 .pgdn{position:fixed;left:50%;bottom:max(24px,calc(env(safe-area-inset-bottom) + 12px));translate:-50% 0;display:flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border:0;border-radius:24px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92);cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:opacity .3s ease}
 .pgdn[hidden]{display:none}
 .pgdn.done{opacity:0;pointer-events:none}
-@media (min-width:900px){ .pgdn{display:none} }
-/* Desktop: the page never scrolls down. Two rows fill the window under the header, three columns
-   across, and later pieces continue to the right in a sideways-scrolling strip that runs to the
-   screen's left, right and bottom edges. Each photo fills its cell (cropped) and shrinks to show the
-   whole painting on hover, letterboxed on dark. --ar is the photo's width / height, set on each tile by the build. */
-@media (min-width:900px){
+@media (min-width:700px){ .pgdn{width:52px;height:52px;border-radius:26px} }
+@media (min-width:900px) and (orientation:landscape){ .pgdn{display:none} }
+/* Sideways "next screen" buttons for the strip below, on touch screens (tablets turned sideways), where
+   there's no mouse wheel. site.js shows them, moves one screen per press and fades each out at its end. */
+.spage{display:none}
+/* Wide landscape screens (desktop, tablets turned sideways): the page never scrolls down. Two rows fill the
+   window under the header, three columns across, and later pieces continue to the right in a
+   sideways-scrolling strip that runs to the screen's left, right and bottom edges. Each photo fills its cell
+   (cropped); with a mouse it shrinks to show the whole painting on hover, letterboxed on dark. A tap opens the
+   piece. --ar is the photo's width / height, set on each tile by the build. */
+@media (min-width:900px) and (orientation:landscape) and (hover:none){
+  .spage{position:absolute;top:calc(50% - 26px);display:flex;align-items:center;justify-content:center;width:52px;height:52px;padding:0;border:0;border-radius:26px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92);cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:opacity .3s ease}
+  .spage[data-dir="-1"]{left:20px}
+  .spage[data-dir="1"]{right:20px}
+  .spage[hidden]{display:none}
+  .spage.done{opacity:0;pointer-events:none}
+}
+@media (min-width:900px) and (orientation:landscape){
   body:has(.home){height:100dvh;overflow:hidden}
   .home{max-width:none;min-height:0;padding:0}
   .home .grid{flex:1;min-height:0;margin:0;grid-template-columns:none;grid-template-rows:repeat(2,minmax(0,1fr));grid-auto-flow:column;grid-auto-columns:calc(100% / 3);overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
@@ -92,7 +116,7 @@ h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
   .home .tile:hover img,.home .tile:focus-visible img{width:min(100cqw,100cqh * var(--ar));height:min(100cqh,100cqw / var(--ar))}
   .home .tile:focus-visible{outline-offset:-4px}
 }
-@media (min-width:900px) and (prefers-reduced-motion:reduce){
+@media (min-width:900px) and (orientation:landscape) and (prefers-reduced-motion:reduce){
   .home .tile img{transition:none}
 }
 
@@ -132,25 +156,29 @@ dialog#viewer::backdrop{background:var(--dark)}
   .vbar{padding-top:32px;font-size:22px}
 }
 
-/* Artwork pages, phones and tablets. Every painting hangs on the page colour, inset with a soft shadow,
-   in one fixed frame (4:5 at most, and short enough to leave the panel room for a title, three lines of
-   description and the thumbnails: 64px header + 12px gap + 220px panel + its bottom padding), so portrait and landscape
-   pieces alike leave the panel below in the same place. Taller paintings shrink to fit; tapping opens the
-   viewer. The neighbouring paintings sit either side for swiping (site.js); the carets float over it.
-   The shadow stays inside the frame's 24px inset, or the frame's edge would cut it off in a hard line.
-   The panel below is see-through white and fills the rest of the screen without scrolling. */
-.more,.less,.more-room,.more-spot{display:none}
-@media (max-width:999px){
+/* Artwork pages. Every painting hangs on the page colour, inset with a soft shadow, in a fixed frame, so
+   portrait and landscape pieces alike leave the details in the same place. Taller paintings shrink to fit;
+   tapping opens the viewer. The neighbouring paintings wait either side of the frame for swiping (site.js) on
+   touch screens; round carets float over it. The shadow stays inside the frame's inset, or the frame's edge
+   would cut it off in a hard line. */
+.more,.less,.more-room,.more-spot,.about{display:none}
+.frame{position:relative;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.track{display:flex;height:100%}
+.track:has(.side){transform:translateX(-100%)}
+.slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;padding:24px;border-radius:0}
+.frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none}
+.chip{position:absolute;top:calc(50% - 24px);display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:24px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92)}
+.chip[rel=prev]{left:8px}
+.chip[rel=next]{right:8px}
+.chip.pressed{background:rgba(30,27,24,.8)}
+
+/* Phones (and anything that isn't a wide landscape screen). The frame is 4:5 at most, and short enough to
+   leave the panel room for a title, three lines of description and the thumbnails: 64px header + 12px gap +
+   220px panel + its bottom padding. The panel below is see-through white and fills the rest of the screen
+   without scrolling. Tablets standing up change this further down. */
+@media not all and (min-width:1000px) and (orientation:landscape){
   main.piece{max-width:none;padding:0}
-  .frame{position:relative;flex:none;height:clamp(240px,calc(100svh - 296px - max(24px,env(safe-area-inset-bottom))),calc(min(100vw,760px) * 1.25));overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none}
-  .track{display:flex;height:100%}
-  .track:has(.side){transform:translateX(-100%)}
-  .slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;padding:24px;border-radius:0}
-  .frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none}
-  .chip{position:absolute;top:calc(50% - 24px);display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:24px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92)}
-  .chip[rel=prev]{left:8px}
-  .chip[rel=next]{right:8px}
-  .chip.pressed{background:rgba(30,27,24,.8)}
+  .frame{flex:none;height:clamp(240px,calc(100svh - 296px - max(24px,env(safe-area-inset-bottom))),calc(min(100vw,760px) * 1.25))}
 
   .panel{position:relative;flex:1;display:flex;flex-direction:column;margin-top:12px;padding:18px var(--pad) max(24px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;background:rgba(255,255,255,.55)}
   .panel .back{min-height:0;margin:-4px 0 8px;font-size:14px}
@@ -176,25 +204,78 @@ dialog#viewer::backdrop{background:var(--dark)}
   .thumb{width:44px;height:44px}
 }
 
-/* Artwork pages, wide screens: painting on the left, details on the right */
-@media (min-width:1000px){
+/* Tablets standing up: the painting first. It fills nearly the whole screen above a slim floating bar
+   (title, date, "About this piece"). site.js measures the bar (--ph) and, on "About this piece", grows it
+   into the full details: --ph becomes their height and the frame above shrinks by exactly as much, on the
+   same curve, so the 12px gap above the bar and the 24px around it never change. The bar's text and the
+   details cross-fade. Header 76px + 12px gap = 88px; the bottom margin follows the safe area. */
+@media (min-width:700px) and (orientation:portrait){
+  .piece{--ph:84px}
+  .frame{height:max(240px,calc(100svh - 88px - var(--ph) - max(24px,env(safe-area-inset-bottom))))}
+  .slide{padding:32px}
+  .chip{top:calc(50% - 26px);width:52px;height:52px;border-radius:26px}
+  .chip[rel=prev]{left:12px}
+  .chip[rel=next]{right:12px}
+
+  .panel{flex:none;height:var(--ph);margin:12px 24px max(24px,env(safe-area-inset-bottom));padding:14px 28px;border-radius:22px;overflow:hidden}
+  .panel.open{position:relative;left:auto;right:auto;bottom:auto;z-index:auto;max-height:none;overflow-y:auto;background:rgba(255,255,255,.55);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+  .piece.anim .frame,.piece.anim .panel{transition:height .5s cubic-bezier(.32,.72,0,1)}
+  .panel .back{display:flex;margin:0 0 8px;padding-right:176px;font-size:15px;line-height:1.3}
+  /* Room on the right for the button, open or closed, so the title never shifts. */
+  .piece h1,.piece .open h1{padding-right:176px;font-size:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .piece .sub{justify-content:flex-start;gap:0;margin-top:4px;padding-right:176px;font-size:14px}
+  .sub span+.count::before{content:"·";margin:0 .5em}
+
+  /* "About this piece": quiet, like the date, so the eye stays on the painting. Swaps with the close caret. */
+  .piece .panel .about{display:flex;position:absolute;top:16px;right:12px;align-items:center;gap:6px;height:52px;padding:0 12px 0 16px;border:0;border-radius:26px;background:none;color:var(--muted);font:400 15px/1 var(--sans);cursor:pointer;transition:opacity .25s ease .25s}
+  .piece .panel .less{display:flex;position:absolute;top:18px;right:12px;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border:0;border-radius:24px;background:rgba(30,27,24,.08);color:var(--ink);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s ease}
+  .piece .panel .less svg{rotate:180deg}
+  .piece .panel.open .about{opacity:0;pointer-events:none;transition:opacity .15s ease}
+  .piece .panel.open .less{opacity:1;pointer-events:auto;transition:opacity .3s ease .18s}
+
+  /* The details: only laid out once opening starts (.full), then faded and drifted in (.open). */
+  .piece .desc,.piece .bar{display:none;opacity:0;translate:0 16px;transition:opacity .15s ease,translate .3s ease}
+  .piece .panel.full .desc{display:block}
+  .piece .panel.full .bar{display:flex}
+  .piece .panel.open .desc,.piece .panel.open .bar{opacity:1;translate:0 0;transition:opacity .3s ease .18s,translate .5s cubic-bezier(.32,.72,0,1)}
+  .piece .desc{margin-top:12px;font-size:18px;line-height:1.6}
+  .piece .bar{margin:16px 0 0;padding:16px 0 12px;border-top:1px solid rgba(43,43,43,.15)}
+  .thumb{width:56px;height:56px}
+}
+@media (min-width:700px) and (orientation:portrait) and (prefers-reduced-motion:reduce){
+  .piece.anim .frame,.piece.anim .panel,.piece .desc,.piece .bar,.piece .panel .about,.piece .panel .less{transition:none!important}
+}
+
+/* Wide landscape screens (desktop, tablets turned sideways): the painting on the left, the details in a
+   floating frosted card on the right, as tall as the frame. The frame runs to the screen's left edge, so on
+   touch screens the next painting slides in from there; the painting itself sits one page margin in, in line
+   with the logo. A long description scrolls inside the card. */
+@media (min-width:1000px) and (orientation:landscape){
   :root{--pad:32px}
-  /* Left column is a 4:3 frame as tall as the window allows (leaving the details column at least 300px).
-     Portrait photos and 4:3 landscape photos all fill its full height, so the right column never moves.
-     The details column takes the rest, one page margin away from the frame. */
-  .piece{flex:none;max-width:1600px;display:grid;grid-template-columns:min(calc((100svh - 160px) * 4 / 3),calc(100% - 300px - var(--pad))) minmax(300px,1fr);grid-template-rows:auto 1fr auto;column-gap:var(--pad);padding-bottom:48px}
-  /* Only the photo itself is clickable, not the empty frame around it. */
-  .piece .photo{grid-column:1;grid-row:1/-1;align-self:start;display:flex;align-items:flex-start;justify-content:center;aspect-ratio:4/3;pointer-events:none}
-  .piece .photo img{max-height:100%;margin:0;pointer-events:auto}
-  .piece .back{grid-column:2;grid-row:1;min-height:0;margin:-2px 0 20px;line-height:1.2}
-  .piece .info{grid-column:2;grid-row:2}
-  .piece h1{margin-top:-6px;font-size:32px}
+  main.piece{flex:none;display:flex;flex-direction:row;gap:32px;width:100%;max-width:1600px;height:calc(100svh - 76px);padding:0 var(--pad) 32px 0}
+  .frame{flex:1;min-width:0}
+  .slide{padding:32px}
+  .chip{top:calc(50% - 26px);width:52px;height:52px;border-radius:26px}
+  .chip[rel=prev]{left:12px}
+  .chip[rel=next]{right:12px}
+  .panel{flex:none;display:flex;flex-direction:column;width:clamp(340px,30vw,420px);padding:30px 32px 28px;border-radius:24px;background:rgba(255,255,255,.55)}
+  .piece .back{min-height:0;margin:-4px 0 16px;line-height:1.2}
+  .piece .info{flex:1;min-height:0;overflow-y:auto}
+  .piece h1{margin:0;font-size:34px}
+  .piece .sub{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+  .piece .desc{font-size:18px}
   .bar{position:static;background:none}
   .bar::before{display:none}
-  .piece .bar{grid-column:2;grid-row:3;margin:24px 0 0;padding:16px 0 0;border-top:1px solid rgba(43,43,43,.15)}
-  /* The phone frame and panel wrappers step aside, so the painting and details are grid cells as before. */
-  .frame,.track,.panel{display:contents}
-  .side,.chips,.count{display:none}
+  .piece .bar{margin:20px 0 0;padding:18px 0 0;border-top:1px solid rgba(43,43,43,.15)}
+  .thumb{width:60px;height:60px}
+}
+/* With a mouse: no swiping, so no carets over the painting; Back / Next sit at the bottom of the card. */
+@media (min-width:1000px) and (orientation:landscape) and (hover:hover){
+  .chips{display:none}
+}
+/* Touch: swipe or the carets over the painting instead, so the card has no Back / Next. */
+@media (min-width:1000px) and (orientation:landscape) and (hover:none){
+  .piece .pager,.piece .bar:not(:has(.strip)){display:none}
 }
 
 /* Page-to-page blending (Safari 18.2+, Chrome, Edge). Older browsers simply switch. */

@@ -28,12 +28,12 @@
 })();
 
 (function () {
-  // Artwork pages on phones and tablets: drag the painting sideways to bring in the previous / next one
+  // Artwork pages on phones and touch screens: drag the painting sideways to bring in the previous / next one
   // (they wait either side of the frame), or tap a caret. Past a fifth of the width, or with a quick flick,
   // the strip slides the rest of the way and the next page opens; otherwise it springs back.
   var frame = document.querySelector('.frame'), track = frame && frame.querySelector('.track'), chips = frame && frame.querySelector('.chips');
   if (!track || !chips) return;
-  var narrow = matchMedia('(max-width: 999px)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape), (hover: none)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
   var start = null, dx = 0, dragging = false, going = false;
   function place(x, animate) {
     track.style.transition = animate ? 'transform .3s cubic-bezier(.2,.7,.2,1)' : 'none';
@@ -95,14 +95,17 @@
 })();
 
 (function () {
-  // Artwork pages on phones and tablets: the description stops after three lines with "…" and a down caret.
+  // Artwork pages on phones: the description stops after three lines with "…" and a down caret.
   // Tapping it raises the whole panel over the painting to show everything; the up caret (or Escape) lowers it.
+  // (Tablets standing up use the slim bar below instead; wide screens show the whole description.)
   var panel = document.querySelector('.panel'), more = panel && panel.querySelector('.more'), less = panel && panel.querySelector('.less');
   if (!more || !less) return;
-  var text = panel.querySelector('.desc-text'), narrow = matchMedia('(max-width: 999px)');
+  var text = panel.querySelector('.desc-text'), narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)');
+  var tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
+  function phone() { return narrow.matches && !tall.matches; }
   function fit() {
     panel.classList.remove('clamp');
-    if (!narrow.matches || panel.classList.contains('open')) return;
+    if (!phone() || panel.classList.contains('open')) return;
     panel.classList.add('clamp');
     if (text.scrollHeight <= text.clientHeight + 1) panel.classList.remove('clamp');
   }
@@ -113,12 +116,108 @@
     (on ? less : more).focus();
   }
   more.addEventListener('click', function () { open(true); });
-  less.addEventListener('click', function () { open(false); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel.classList.contains('open')) open(false); });
-  document.addEventListener('click', function (e) { if (panel.classList.contains('open') && !panel.contains(e.target)) open(false); });
+  less.addEventListener('click', function () { if (phone()) open(false); });
+  document.addEventListener('keydown', function (e) { if (phone() && e.key === 'Escape' && panel.classList.contains('open')) open(false); });
+  document.addEventListener('click', function (e) { if (phone() && panel.classList.contains('open') && !panel.contains(e.target)) open(false); });
   addEventListener('resize', fit);
   if (document.fonts) document.fonts.ready.then(fit);
   fit();
+})();
+
+(function () {
+  // Artwork pages on tablets standing up: the painting fills the screen above a slim bar. "About this piece"
+  // grows the bar into the full details while the frame above shrinks by the same amount, on the same curve
+  // (style.css, via --ph), so the gaps around both never change. The close caret (or Escape) shrinks it back.
+  // Open or closed carries over to the next painting, so swiping through keeps the details showing.
+  var piece = document.querySelector('main.piece'), panel = piece && piece.querySelector('.panel');
+  var about = panel && panel.querySelector('.about'), less = panel && panel.querySelector('.less');
+  if (!about || !less) return;
+  var tall = matchMedia('(min-width: 700px) and (orientation: portrait)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  var KEY = 'pbp-details', bar = 84, timer = 0, first = true;
+  function remember(on) { try { if (on) sessionStorage.setItem(KEY, '1'); else sessionStorage.removeItem(KEY); } catch (_) {} }
+  function remembered() { try { return sessionStorage.getItem(KEY) === '1'; } catch (_) { return false; } }
+  function isOpen() { return panel.classList.contains('open'); }
+  // Never taller than leaves the painting 320px; a longer description scrolls inside the panel.
+  function fullHeight() { return Math.max(bar, Math.min(panel.scrollHeight, innerHeight - 88 - 24 - 320)); }
+  function set(on, animate) {
+    clearTimeout(timer);
+    piece.classList.toggle('anim', animate && !reduce.matches);
+    if (on) {
+      panel.classList.add('full');
+      piece.style.setProperty('--ph', fullHeight() + 'px');
+      panel.classList.add('open');
+    } else {
+      panel.classList.remove('open');
+      panel.scrollTop = 0;
+      piece.style.setProperty('--ph', bar + 'px');
+      timer = setTimeout(function () { if (!isOpen()) panel.classList.remove('full'); }, animate && !reduce.matches ? 500 : 0);
+    }
+    about.setAttribute('aria-expanded', String(on));
+    less.setAttribute('aria-expanded', String(on));
+  }
+  // Measure the slim bar (taller on extra-photo pages, which add a "Return to" link), then size both.
+  function layout() {
+    clearTimeout(timer);
+    piece.classList.remove('anim');
+    if (!tall.matches) {
+      panel.classList.remove('full');
+      piece.style.removeProperty('--ph');
+      return;
+    }
+    var on = isOpen() || (first && remembered());
+    first = false;
+    panel.classList.remove('open', 'full');
+    piece.style.setProperty('--ph', '0px');
+    bar = Math.max(84, panel.scrollHeight);
+    if (on) set(true, false);
+    else piece.style.setProperty('--ph', bar + 'px');
+  }
+  about.addEventListener('click', function () {
+    if (!tall.matches) return;
+    set(true, true);
+    remember(true);
+    less.focus({ preventScroll: true });
+  });
+  less.addEventListener('click', function () {
+    if (!tall.matches) return;
+    set(false, true);
+    remember(false);
+    about.focus({ preventScroll: true });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !tall.matches || !isOpen() || document.querySelector('dialog[open]')) return;
+    set(false, true);
+    remember(false);
+    about.focus({ preventScroll: true });
+  });
+  addEventListener('resize', layout);
+  if (document.fonts) document.fonts.ready.then(layout);
+  layout();
+})();
+
+(function () {
+  // Home page on wide touch screens (tablets turned sideways): the round double carets either side move the
+  // strip one screen at a time, and each fades out at its end.
+  var grid = document.querySelector('.home .grid'), btns = document.querySelectorAll('.spage');
+  if (!grid || !btns.length) return;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  function check() {
+    var max = grid.scrollWidth - grid.clientWidth;
+    [].forEach.call(btns, function (b) {
+      var done = b.getAttribute('data-dir') === '1' ? grid.scrollLeft >= max - 4 : grid.scrollLeft <= 4;
+      b.classList.toggle('done', done);
+      b.tabIndex = done ? -1 : 0;
+    });
+  }
+  [].forEach.call(btns, function (b) {
+    b.hidden = false;
+    b.addEventListener('click', function () {
+      grid.scrollBy({ left: Number(b.getAttribute('data-dir')) * grid.clientWidth, behavior: reduce.matches ? 'auto' : 'smooth' });
+    });
+  });
+  grid.addEventListener('scroll', check, { passive: true });
+  addEventListener('resize', check);
+  check();
 })();
 
 (function () {
