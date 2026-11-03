@@ -142,7 +142,7 @@ const minCss = (c) => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').re
 const minJs = (j) => j.replace(/^\s*\/\/.*$/gm, '').replace(/\n\s*/g, ' ').trim();
 const srcset = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
 const midOf = (list) => list[Math.min(1, list.length - 1)].url;
-const SIZES_MAIN = '(min-width:1600px) 1204px, (min-width:1000px) calc(100vw - 396px), (min-width:700px) 664px, calc(100vw - 48px)';
+const SIZES_MAIN = '(min-width:1000px) and (orientation:landscape) min(calc(100vw - 548px), 1100px), (min-width:700px) calc(100vw - 64px), calc(100vw - 48px)';
 const SIZES_GRID = '(min-width:560px) 50vw, 100vw';
 
 const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -245,6 +245,8 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
   const side = (im) => `<div class="slide side" aria-hidden="true">${preloadImg(im)}</div>`;
   const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
   const LESS = `<button class="less" type="button" aria-label="Close the full description">${CARET(UP)}</button>`;
+  // Tablets standing up: the slim bar under the painting opens the details with this (site.js).
+  const ABOUT = (what) => `<button class="about" type="button" aria-expanded="false"><span>About this ${what}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${UP}"/></svg></button>`;
 
   const strip = (a, current) => a.extras.length === 0 ? '' : `<div class="strip"><p class="strip-label">More about this piece</p><ul class="thumbs">${a.extras.map((x, j) =>
     `<li><a class="thumb" href="/art/${a.id}/${j + 1}/" aria-label="${esc(x.kind || 'Photo')}, photo ${j + 1} of ${a.extras.length}"${current === j ? ' aria-current="page"' : ''} style="--dom:${x.img.dom}">${thumbImg(x.img, '96px')}</a></li>`).join('')}</ul></div>`;
@@ -262,7 +264,7 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
     const body = `${header()}
 <main class="wrap piece">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
-<div class="panel">${LESS}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed && `Completed ${a.completed}`, i, N)}
+<div class="panel">${LESS}${ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed && `Completed ${a.completed}`, i, N)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
     const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
@@ -276,7 +278,7 @@ ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
       const xphoto = `<a class="photo slide" href="${x.img.large}" data-large="${x.img.large}" aria-label="Enlarge photo: ${esc(xalt)}">${mainImg(x.img, xalt, true)}</a>`;
       const xbody = `${header()}
 <main class="wrap piece">${M > 1 ? frame(xphoto, { img: a.extras[pj].img, href: xhref(pj) }, { img: a.extras[nj].img, href: xhref(nj) }) : frame(xphoto)}
-<div class="panel">${LESS}<a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
+<div class="panel">${LESS}${ABOUT('photo')}<a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
 <div class="info"><h1>${esc(x.title || x.kind || a.title)}</h1>${sub(x.kind, j, M)}
 ${paras(x.description)}</div>
 ${bar(strip(a, j), xhref(pj), xhref(nj))}</div></main>`;
@@ -292,9 +294,20 @@ ${bar(strip(a, j), xhref(pj), xhref(nj))}</div></main>`;
   await out('about/index.html', page({ title: `About the artist · ${brand}`, desc: `About ${artist}`, pal: palette(PAPER_TINTS), body: aboutBody, canonical: '/about/' }));
 
   // Home: grid of every piece, on the same soft paper as the About page
-  const tiles = artworks.map((a, i) => `<li><a class="tile" href="${artHref(a)}" style="--ar:${(a.img.w / a.img.h).toFixed(4)}" aria-label="${esc(a.title)}">${gridImg(a.img, a.alt || a.title, i < 3)}</a></li>`).join('');
+  // Two columns on tablets standing up (style.css): each piece goes to whichever column is shorter so far.
+  // --o is its place (the left column first, then the right); --mh is the taller column's height in column widths.
+  const cols = [{ h: 0, n: 0 }, { h: 0, n: 0 }];
+  const order = artworks.map((a) => {
+    const c = cols[0].h <= cols[1].h ? 0 : 1;
+    cols[c].h += a.img.h / a.img.w;
+    cols[c].n += 1;
+    return c === 0 ? cols[0].n : 1000 + cols[1].n;
+  });
+  const tiles = artworks.map((a, i) => `<li style="--o:${order[i]}"><a class="tile" href="${artHref(a)}" style="--ar:${(a.img.w / a.img.h).toFixed(4)}" aria-label="${esc(a.title)}">${gridImg(a.img, a.alt || a.title, i < 3)}</a></li>`).join('');
+  const DOUBLE = (d) => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+  const spage = `<button class="spage" type="button" data-dir="-1" aria-label="Back one screen" hidden>${DOUBLE('M19 6 L13 12 L19 18 M11 6 L5 12 L11 18')}</button><button class="spage" type="button" data-dir="1" aria-label="Forward one screen" hidden>${DOUBLE('M5 6 L11 12 L5 18 M13 6 L19 12 L13 18')}</button>`;
   await out('index.html', page({ title: brand, desc: `Artwork by ${artist}`, pal: palette(PAPER_TINTS), canonical: '/', ogImage: artworks[0].img.page[artworks[0].img.page.length - 1].url,
-    body: `${header()}\n<main class="wrap wide home"><h1 class="vh">Artwork by ${esc(artist)}</h1><ul class="grid">${tiles}</ul></main>`
+    body: `${header()}\n<main class="wrap wide home"><h1 class="vh">Artwork by ${esc(artist)}</h1><ul class="grid" style="--mh:${Math.max(cols[0].h, cols[1].h).toFixed(4)}">${tiles}</ul>${spage}</main>`
       + `<button class="pgdn" type="button" aria-label="Scroll down one screen" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5 L12 11 L18 5 M6 13 L12 19 L18 13"/></svg></button>` }));
 
   // 404 + hosting files
