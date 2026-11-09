@@ -27,8 +27,9 @@ a{color:inherit}
 @media (max-width:559px){ .nav .long{display:none} }
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border:2px solid var(--ink);border-radius:10px;background:transparent;color:var(--ink);font:700 18px/1 var(--sans);text-decoration:none;cursor:pointer}
 /* Ghost caret buttons: light caret, solid black on hover */
-.btn.icon{width:44px;min-height:44px;padding:0;border:0;border-radius:8px;color:rgba(43,43,43,.62);transition:background-color .2s ease,color .2s ease}
-.btn.icon:hover{background:var(--ink);color:#fff}
+.btn.icon{width:44px;min-height:44px;padding:0;border:0;border-radius:50%;color:rgba(43,43,43,.62);transition:background-color .2s ease,color .2s ease}
+/* Same soft grey as the phone carets. */
+.btn.icon:hover{background:rgba(30,27,24,.45);color:rgba(246,242,234,.92)}
 /* Arrow-key press: a lighter flash than hover */
 .btn.icon.pressed{background:rgba(43,43,43,.1);color:var(--ink);transition:none}
 
@@ -167,28 +168,33 @@ dialog#viewer::backdrop{background:var(--dark)}
 .track:has(.side){transform:translateX(-100%)}
 .slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;padding:24px;border-radius:0}
 .frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none}
-.chip{position:absolute;top:calc(50% - 24px);display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:24px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92)}
+/* Phones: a 34px circle (::after) inside a 44px see-through tap area, 13px from the screen's edge. Tapping
+   doesn't change it (iOS's own tap highlight is off), so it never draws the eye. */
+.chip{position:absolute;top:calc(50% - 22px);display:flex;align-items:center;justify-content:center;width:44px;height:44px;isolation:isolate;color:rgba(246,242,234,.92);-webkit-tap-highlight-color:transparent}
+.chip::after{content:"";position:absolute;inset:5px;border-radius:50%;z-index:-1;background:rgba(30,27,24,.45)}
+.chip svg{width:16px;height:16px}
 .chip[rel=prev]{left:8px}
 .chip[rel=next]{right:8px}
-.chip.pressed{background:rgba(30,27,24,.8)}
 
-/* Phones (and anything that isn't a wide landscape screen). The frame is 4:5 at most, and short enough to
-   leave the panel room for a title, three lines of description and the thumbnails: 64px header + 12px gap +
-   220px panel + its bottom padding. The panel below is see-through white and fills the rest of the screen
-   without scrolling. Tablets standing up change this further down. */
+/* Phones (and anything that isn't a wide landscape screen). The frame is 4:5 at most, and as tall as it can be
+   while leaving the panel room for a title and four lines of description: 64px header + 12px gap + 185px panel
+   + its bottom padding. The description always takes at least four lines, so the painting stays the same size
+   from piece to piece. The panel below is see-through white, fills the rest of the screen without scrolling,
+   and keeps its text centred so the space above and below it matches. No thumbnails here (more room for the
+   painting). Tablets standing up change this further down. */
 @media not all and (min-width:1000px) and (orientation:landscape){
   main.piece{max-width:none;padding:0}
-  .frame{flex:none;height:clamp(240px,calc(100svh - 296px - max(24px,env(safe-area-inset-bottom))),calc(min(100vw,760px) * 1.25))}
+  .frame{flex:none;height:clamp(240px,calc(100svh - 261px - max(20px,env(safe-area-inset-bottom))),calc(min(100vw,760px) * 1.25))}
 
-  .panel{position:relative;flex:1;display:flex;flex-direction:column;margin-top:12px;padding:18px var(--pad) max(24px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;background:rgba(255,255,255,.55)}
+  .panel{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;margin-top:12px;padding:20px var(--pad) max(20px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;background:rgba(255,255,255,.55)}
   .panel .back{min-height:0;margin:-4px 0 8px;font-size:14px}
   .piece h1{margin:0;font-size:26px}
   .piece .sub{display:flex;justify-content:space-between;gap:12px;font-size:14px}
-  .piece .desc{position:relative;margin-top:10px;font-size:16px;line-height:1.5}
+  .piece .desc{position:relative;min-height:6em;margin-top:10px;font-size:16px;line-height:1.5}
   .piece .desc p:first-of-type{margin-top:0}
-  /* Cut off after three lines, ending in "…" and a down caret (site.js adds .clamp only when there's more). */
-  .clamp .desc-text{max-height:4.5em;overflow:hidden}
-  .clamp .more-room{display:block;float:right;width:0;height:3em}
+  /* Cut off after four lines, ending in "…" and a down caret (site.js adds .clamp only when there's more). */
+  .clamp .desc-text{max-height:6em;overflow:hidden}
+  .clamp .more-room{display:block;float:right;width:0;height:4.5em}
   .clamp .more-spot{display:block;float:right;clear:both;width:2.75em;height:1.5em}
   .clamp .more{display:flex;position:absolute;right:-10px;bottom:-10px;align-items:center;gap:2px;height:44px;padding:0 10px;border:0;border-radius:22px;background:none;color:var(--ink);font:inherit;cursor:pointer}
   /* Opened: the whole panel rises over the painting, more solid, with an up caret to close it. */
@@ -196,12 +202,11 @@ dialog#viewer::backdrop{background:var(--dark)}
   .open .less{display:flex;position:absolute;top:8px;right:12px;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;border-radius:22px;background:none;color:var(--ink);cursor:pointer}
   .open h1{padding-right:40px}
 
-  .piece .bar{position:static;margin:auto 0 0;padding:14px 0 0;background:none}
+  .piece .bar{display:none;position:static;margin:auto 0 0;padding:14px 0 0;background:none}
   .piece .bar::before,.piece .pager{display:none}
   .strip{display:flex;align-items:center;gap:12px}
   .strip-label{order:1}
   .thumbs{margin:0}
-  .thumb{width:44px;height:44px}
 }
 
 /* Tablets standing up: the painting first. It fills nearly the whole screen above a slim floating bar
@@ -213,7 +218,9 @@ dialog#viewer::backdrop{background:var(--dark)}
   .piece{--ph:84px}
   .frame{height:max(240px,calc(100svh - 88px - var(--ph) - max(24px,env(safe-area-inset-bottom))))}
   .slide{padding:32px}
-  .chip{top:calc(50% - 26px);width:52px;height:52px;border-radius:26px}
+  .chip{top:calc(50% - 26px);width:52px;height:52px}
+  .chip::after{inset:0}
+  .chip svg{width:18px;height:18px}
   .chip[rel=prev]{left:12px}
   .chip[rel=next]{right:12px}
 
@@ -238,7 +245,7 @@ dialog#viewer::backdrop{background:var(--dark)}
   .piece .panel.full .desc{display:block}
   .piece .panel.full .bar{display:flex}
   .piece .panel.open .desc,.piece .panel.open .bar{opacity:1;translate:0 0;transition:opacity .3s ease .18s,translate .5s cubic-bezier(.32,.72,0,1)}
-  .piece .desc{margin-top:12px;font-size:18px;line-height:1.6}
+  .piece .desc{min-height:0;margin-top:12px;font-size:18px;line-height:1.6}
   .piece .bar{margin:16px 0 0;padding:16px 0 12px;border-top:1px solid rgba(43,43,43,.15)}
   .thumb{width:56px;height:56px}
 }
@@ -255,7 +262,9 @@ dialog#viewer::backdrop{background:var(--dark)}
   main.piece{flex:none;display:flex;flex-direction:row;gap:32px;width:100%;max-width:1600px;height:calc(100svh - 76px);padding:0 var(--pad) 32px 0}
   .frame{flex:1;min-width:0}
   .slide{padding:32px}
-  .chip{top:calc(50% - 26px);width:52px;height:52px;border-radius:26px}
+  .chip{top:calc(50% - 26px);width:52px;height:52px}
+  .chip::after{inset:0}
+  .chip svg{width:18px;height:18px}
   .chip[rel=prev]{left:12px}
   .chip[rel=next]{right:12px}
   .panel{flex:none;display:flex;flex-direction:column;width:clamp(340px,30vw,420px);padding:30px 32px 28px;border-radius:24px;background:rgba(255,255,255,.55)}

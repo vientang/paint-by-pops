@@ -16,6 +16,8 @@
 #    title        Shown as the heading.
 #    completed    Optional. Example: October 2026
 #    description  A few sentences. Blank line = new paragraph.
+#                 For a poem, write "description: |" and put each
+#                 line on its own line, indented (see the first piece).
 #    photo        File name inside photos/artworks/
 #    alt          Optional. Describe the painting in a sentence
 #                 for people who use screen readers.
@@ -26,42 +28,27 @@
 #                 (file name inside photos/extras/).
 # ─────────────────────────────────────────────────────────────
 
-- id: sample-one
-  title: "[Artwork title 1]"
-  completed: "[Month Year]"
-  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
-  photo: sample-one.jpg
-  alt: "[Describe the painting in one sentence]"
-  extras:
-    - kind: Behind the scenes
-      title: "[Photo caption title]"
-      description: "[Short caption: one or two lines about this photo.]"
-      photo: sample-one-studio.jpg
-    - kind: Inspired by
-      title: "[Photo caption title]"
-      description: "[Short caption: one or two lines about this photo.]"
-      photo: sample-one-inspiration.jpg
-    - kind: Reference photo
-      title: "[Photo caption title]"
-      description: "[Short caption: one or two lines about this photo.]"
-      photo: sample-one-reference.jpg
+- id: paris-montmartre
+  title: "Paris Montmartre"
+  completed: "May 2026"
+  description: |
+    Through streets of stone where echoes sleep
+    And golden autumn shadows weep
+    Lonely dreamers drift and sigh
+    With whispers aimed at the sky
+  photo: IMG_1454.JPG
 
-- id: sample-two
-  title: "[Artwork title 2]"
-  completed: "[Month Year]"
-  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
-  photo: sample-two.jpg
-  extras:
-    - kind: Behind the scenes
-      title: "[Photo caption title]"
-      description: "[Short caption: one or two lines about this photo.]"
-      photo: sample-two-studio.jpg
+- id: purry-friends
+  title: "Purry friends"
+  completed: "September 29, 2026"
+  description: "Two cats who like to swim."
+  photo: IMG_1453.JPG
 
-- id: sample-three
-  title: "[Artwork title 3]"
-  completed: "[Month Year]"
-  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
-  photo: sample-three.jpg
+- id: coffee-by-the-window
+  title: "Coffee by the window"
+  completed: "October 15, 2026"
+  description: "The kind of morning with no agenda, just an invitation to pause and enjoy the thoughts."
+  photo: IMG_1452.JPG
 
 - id: sample-four
   title: "[Artwork title 4]"

@@ -17,7 +17,8 @@ const fail = (msg) => { throw new UserError(msg); };
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const rel = (p) => path.relative(ROOT, p);
 const paragraphs = (t) => String(t ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
-  .map((p) => `<p>${esc(p.replace(/\s*\n\s*/g, ' '))}</p>`).join('');
+  // A line break inside a paragraph (e.g. a poem written after "description: |") stays a line break.
+  .map((p) => `<p>${esc(p).replace(/[ \t]*\n\s*/g, '<br>')}</p>`).join('');
 
 /* ───────────── read content ───────────── */
 async function readYaml(file) {
@@ -235,7 +236,7 @@ ${body}
 ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
   const header = (current) => `<header class="top wrap wide"><a class="logo" href="/"><span>Paint By <em>Pops</em></span></a><a class="nav" href="/about/"${current === 'about' ? ' aria-current="page"' : ''}><span>About <span class="long">the artist </span><b>${esc(artist)}</b></span></a></header>`;
-  // Description. On phones and tablets site.js cuts it off after three lines and shows the "more" button
+  // Description. On phones and tablets site.js cuts it off after four lines and shows the "more" button
   // (the two empty spans make room for it at the end of the third line).
   const paras = (t) => `<div class="desc"><div class="desc-text"><span class="more-room" aria-hidden="true"></span><span class="more-spot" aria-hidden="true"></span>${paragraphs(t)}</div><button class="more" type="button" aria-expanded="false" aria-label="Read the full description"><span aria-hidden="true">…</span>${CARET(DOWN)}</button></div>`;
   const sub = (text, i, n) => text || n > 1 ? `<p class="sub">${text ? `<span>${esc(text)}</span>` : ''}${n > 1 ? `<span class="count">${i + 1} of ${n}</span>` : ''}</p>` : '';
@@ -264,10 +265,10 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
     const body = `${header()}
 <main class="wrap piece">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
-<div class="panel">${LESS}${ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed && `Completed ${a.completed}`, i, N)}
+<div class="panel">${LESS}${ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
-    const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
+    const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').replace(/\s+/g, ' ').trim().slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
     await out(`art/${a.id}/index.html`, html);
 
     const M = a.extras.length;
