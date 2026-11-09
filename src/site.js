@@ -83,19 +83,17 @@
     var a = e.target.closest('a');
     if (!a) return;
     e.preventDefault();
-    a.classList.add('pressed');
     go(a.getAttribute('rel') === 'next' ? 1 : -1);
   });
   // Coming back via the browser's Back button can restore the page mid-slide, so reset it.
   addEventListener('pageshow', function () {
     going = false;
     place(0, false);
-    [].forEach.call(chips.querySelectorAll('.pressed'), function (b) { b.classList.remove('pressed'); });
   });
 })();
 
 (function () {
-  // Artwork pages on phones: the description stops after three lines with "…" and a down caret.
+  // Artwork pages on phones: the description stops after four lines with "…" and a down caret.
   // Tapping it raises the whole panel over the painting to show everything; the up caret (or Escape) lowers it.
   // (Tablets standing up use the slim bar below instead; wide screens show the whole description.)
   var panel = document.querySelector('.panel'), more = panel && panel.querySelector('.more'), less = panel && panel.querySelector('.less');
@@ -266,4 +264,25 @@
   img.addEventListener('click', function () { setZoom(!box.classList.contains('zoom')); });
   dlg.querySelector('[data-vclose]').addEventListener('click', function () { dlg.close(); });
   dlg.addEventListener('close', function () { img.removeAttribute('src'); });
+})();
+
+(function () {
+  // Artwork pages on desktop: a title too long for one line in the side panel shrinks just enough to fit,
+  // down to 26px (below that it wraps). Measured in the browser, so it works for any title.
+  var h = document.querySelector('.piece h1');
+  if (!h) return;
+  var wide = matchMedia('(min-width: 1000px) and (orientation: landscape)'), MIN = 26;
+  function fit() {
+    h.style.fontSize = '';
+    if (!wide.matches) return;
+    var cs = getComputedStyle(h), size = parseFloat(cs.fontSize);
+    var pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    h.style.whiteSpace = 'nowrap';
+    var need = h.scrollWidth - pad, room = h.clientWidth - pad;
+    h.style.whiteSpace = '';
+    if (need > room) h.style.fontSize = Math.max(MIN, Math.floor(size * room / need * 10) / 10) + 'px';
+  }
+  addEventListener('resize', fit);
+  if (document.fonts) document.fonts.ready.then(fit);
+  fit();
 })();
