@@ -28,6 +28,13 @@
 #                 (file name inside photos/extras/).
 # ─────────────────────────────────────────────────────────────
 
+- id: wild-horse
+  title: "Wild horse"
+  completed: "September 7, 2026"
+  description: "A bay horse breaking into a gallop, mane flying, through a rush of wind and light."
+  photo: IMG_1463.jpg
+  alt: "Oil painting of a bay horse with a white blaze galloping straight toward the viewer, its dark mane streaming against a swirling pale blue and cream background."
+
 - id: paris-montmartre
   title: "Paris Montmartre"
   completed: "May 2026"
@@ -49,6 +56,14 @@
   completed: "October 15, 2026"
   description: "The kind of morning with no agenda, just an invitation to pause and enjoy the thoughts."
   photo: IMG_1452.JPG
+
+- id: king-parrots
+  title: "King parrots"
+  completed: "January 2020"
+  description: "A pair of king parrots, one green and one red, resting among fuchsias and white blossoms in a shady rainforest."
+  photo: IMG_1465.jpg
+  background: "#D5DDCF"
+  alt: "Oil painting of two king parrots, a green one and a red one, perched on a mossy branch, framed by hanging pink fuchsias above, white blossoms below and a blue butterfly, against a dark green forest."
 
 - id: sample-four
   title: "[Artwork title 4]"
