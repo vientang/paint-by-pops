@@ -57,6 +57,13 @@
   description: "The kind of morning with no agenda, just an invitation to pause and enjoy the thoughts."
   photo: IMG_1452.JPG
 
+- id: king-parrots
+  title: "King parrots"
+  completed: "January 2020"
+  description: "A pair of king parrots, one green and one red, resting among fuchsias and white blossoms in a shady rainforest."
+  photo: IMG_1465.jpg
+  alt: "Oil painting of two king parrots, a green one and a red one, perched on a mossy branch, framed by hanging pink fuchsias above, white blossoms below and a blue butterfly, against a dark green forest."
+
 - id: sample-four
   title: "[Artwork title 4]"
   completed: "[Month Year]"
