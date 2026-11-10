@@ -99,7 +99,9 @@ h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
    window under the header, three columns across, and later pieces continue to the right in a
    sideways-scrolling strip that runs to the screen's left, right and bottom edges. Each photo fills its cell
    (cropped); with a mouse it shrinks to show the whole painting on hover, letterboxed on dark. A tap opens the
-   piece. --ar is the photo's width / height, set on each tile by the build. */
+   piece. --ar is the photo's width / height, set on each tile by the build. The reveal starts fast and
+   settles (an expo ease-out); letting go is shorter and milder, so sweeping across tiles doesn't leave a
+   trail of slow zooms behind. */
 @media (min-width:900px) and (orientation:landscape) and (hover:none){
   .spage{position:absolute;top:calc(50% - 26px);display:flex;align-items:center;justify-content:center;width:52px;height:52px;padding:0;border:0;border-radius:26px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92);cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:opacity .3s ease}
   .spage[data-dir="-1"]{left:20px}
@@ -113,12 +115,12 @@ h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
   .home .grid{flex:1;min-height:0;margin:0;grid-template-columns:none;grid-template-rows:repeat(2,minmax(0,1fr));grid-auto-flow:column;grid-auto-columns:calc(100% / 3);overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
   .home .grid::-webkit-scrollbar{display:none}
   .home .tile{height:100%;aspect-ratio:auto;overflow:hidden;container-type:size;background:var(--dark)}
-  .home .tile img{top:50%;left:50%;width:max(100cqw,100cqh * var(--ar));height:max(100cqh,100cqw / var(--ar));translate:-50% -50%;transform:none;transition:width .5s ease,height .5s ease}
-  .home .tile:hover img,.home .tile:focus-visible img{width:min(100cqw,100cqh * var(--ar));height:min(100cqh,100cqw / var(--ar))}
+  .home .tile img{top:50%;left:50%;width:max(100cqw,100cqh * var(--ar));height:max(100cqh,100cqw / var(--ar));translate:-50% -50%;transform:none;transition:width .28s cubic-bezier(.33,1,.68,1),height .28s cubic-bezier(.33,1,.68,1)}
+  .home .tile:hover img,.home .tile:focus-visible img{width:min(100cqw,100cqh * var(--ar));height:min(100cqh,100cqw / var(--ar));transition:width .42s cubic-bezier(.16,1,.3,1),height .42s cubic-bezier(.16,1,.3,1)}
   .home .tile:focus-visible{outline-offset:-4px}
 }
 @media (min-width:900px) and (orientation:landscape) and (prefers-reduced-motion:reduce){
-  .home .tile img{transition:none}
+  .home .tile img,.home .tile:hover img,.home .tile:focus-visible img{transition:none}
 }
 
 /* Photo viewer */
