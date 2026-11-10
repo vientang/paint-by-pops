@@ -62,6 +62,7 @@
   completed: "January 2020"
   description: "A pair of king parrots, one green and one red, resting among fuchsias and white blossoms in a shady rainforest."
   photo: IMG_1465.jpg
+  background: "#D5DDCF"
   alt: "Oil painting of two king parrots, a green one and a red one, perched on a mossy branch, framed by hanging pink fuchsias above, white blossoms below and a blue butterfly, against a dark green forest."
 
 - id: sample-four
