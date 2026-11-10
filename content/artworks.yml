@@ -28,6 +28,13 @@
 #                 (file name inside photos/extras/).
 # ─────────────────────────────────────────────────────────────
 
+- id: wild-horse
+  title: "Wild horse"
+  completed: "September 7, 2026"
+  description: "A bay horse breaking into a gallop, mane flying, through a rush of wind and light."
+  photo: IMG_1463.jpg
+  alt: "Oil painting of a bay horse with a white blaze galloping straight toward the viewer, its dark mane streaming against a swirling pale blue and cream background."
+
 - id: paris-montmartre
   title: "Paris Montmartre"
   completed: "May 2026"
