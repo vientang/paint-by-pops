@@ -90,7 +90,9 @@ function palette(tints) {
   return { bg: base, grad: `${glow('100% 0', light.at(-1))},${glow('0 100%', light[0])},${base}` };
 }
 // A hand-picked "background" colour gets a slightly lighter shade of itself for the gradient.
+// A list of colours is used as-is: [base, bottom-left glow, top-right glow].
 function customTints(c) {
+  if (Array.isArray(c)) return c.map(String);
   if (!/^#[0-9a-f]{6}$/i.test(c)) return [c];
   const [h, s, l] = rgbToHsl(...[1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)));
   return [c, tint(h, s, Math.min(l + 0.04, 0.98))];
@@ -202,7 +204,7 @@ async function main() {
   for (const a of artworks) {
     a.id = String(a.id);
     a.img = await processImage(path.join(ROOT, 'photos/artworks', String(a.photo)), `"${a.title}"`);
-    a.pal = palette(a.background ? customTints(String(a.background)) : a.img.tints);
+    a.pal = palette(a.background ? customTints(Array.isArray(a.background) ? a.background : String(a.background)) : a.img.tints);
     a.extras = a.extras || [];
     for (const x of a.extras) x.img = await processImage(path.join(ROOT, 'photos/extras', String(x.photo)), `an extra photo of "${a.title}"`);
     checkShape(a.img, `photos/artworks/${a.photo}`);

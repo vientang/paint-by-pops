@@ -22,7 +22,8 @@
 #    alt          Optional. Describe the painting in a sentence
 #                 for people who use screen readers.
 #    background   Optional. Overrides the automatic background
-#                 color, for example "#E8E1F0".
+#                 color, for example "#E8E1F0". Or a list of
+#                 three: [base, bottom-left glow, top-right glow].
 #    extras       Optional. Behind-the-scenes / inspiration photos.
 #                 Each one has kind, title, description, photo
 #                 (file name inside photos/extras/).
@@ -59,26 +60,16 @@
 
 - id: king-parrots
   title: "King parrots"
-  completed: "January 2020"
+  completed: "January 2006"
   description: "A pair of king parrots, one green and one red, resting among fuchsias and white blossoms in a shady rainforest."
   photo: IMG_1465.jpg
   background: "#D5DDCF"
   alt: "Oil painting of two king parrots, a green one and a red one, perched on a mossy branch, framed by hanging pink fuchsias above, white blossoms below and a blue butterfly, against a dark green forest."
 
-- id: sample-four
-  title: "[Artwork title 4]"
-  completed: "[Month Year]"
-  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
-  photo: sample-four.jpg
-
-- id: sample-five
-  title: "[Artwork title 5]"
-  completed: "[Month Year]"
-  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
-  photo: sample-five.jpg
-
-- id: sample-six
-  title: "[Artwork title 6]"
-  completed: "[Month Year]"
-  description: "[Short description: two or three lines about the piece, such as the medium and what inspired it.]"
-  photo: sample-six.jpg
+- id: grand-canal-in-progress
+  title: "Grand Canal, Venice (work in progress)"
+  completed: "In progress"
+  description: "Still on the easel: the drawing is down and the first washes of sky, water and ochre are going in."
+  photo: grand-canal-in-progress.jpg
+  background: ["#D7E5F4", "#D2EEEB", "#F6E8C8"]
+  alt: "An unfinished painting of the Grand Canal in Venice: pencil outlines of palazzos and a domed church, with the sky and canal partly painted in blue and turquoise and the rest still bare canvas."
