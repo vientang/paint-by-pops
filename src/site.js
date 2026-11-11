@@ -280,7 +280,14 @@
     h.style.whiteSpace = 'nowrap';
     var need = h.scrollWidth - pad, room = h.clientWidth - pad;
     h.style.whiteSpace = '';
-    if (need > room) h.style.fontSize = Math.max(MIN, Math.floor(size * room / need * 10) / 10) + 'px';
+    if (need > room) {
+      // Text width doesn't scale exactly with font size (kerning, sub-pixel rounding), so check whether it
+      // still wraps onto a second line and nudge it down until it doesn't.
+      size = Math.floor(size * room / need * 10) / 10;
+      var wraps = function () { return h.getBoundingClientRect().height > parseFloat(getComputedStyle(h).lineHeight) * 1.5; };
+      h.style.fontSize = Math.max(MIN, size) + 'px';
+      while (size > MIN && wraps()) { size -= 0.2; h.style.fontSize = Math.max(MIN, size) + 'px'; }
+    }
   }
   addEventListener('resize', fit);
   if (document.fonts) document.fonts.ready.then(fit);
