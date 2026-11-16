@@ -145,7 +145,7 @@ const minCss = (c) => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').re
 const minJs = (j) => j.replace(/^\s*\/\/.*$/gm, '').replace(/\n\s*/g, ' ').trim();
 const srcset = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
 const midOf = (list) => list[Math.min(1, list.length - 1)].url;
-const SIZES_MAIN = '(min-width:1000px) and (orientation:landscape) min(calc(100vw - 548px), 1100px), (min-width:700px) calc(100vw - 64px), calc(100vw - 48px)';
+const SIZES_MAIN = '(min-width:1000px) and (orientation:landscape) min(calc(100vw - 548px), 1100px), (min-width:700px) calc(100vw - 64px), calc(100vw - 24px)';
 const SIZES_GRID = '(min-width:560px) 50vw, 100vw';
 
 const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -266,7 +266,7 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const head = N > 1 ? `\n<link rel="prefetch" href="${artHref(next)}"><link rel="prefetch" href="${artHref(prev)}">` : '';
     const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
     const body = `${header()}
-<main class="wrap piece">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
+<main class="wrap piece" style="--ar:${(a.img.w / a.img.h).toFixed(4)}">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
 <div class="panel">${LESS}${ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
@@ -280,7 +280,7 @@ ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
       const xhref = (k) => `/art/${a.id}/${k + 1}/`;
       const xphoto = `<a class="photo slide" href="${x.img.large}" data-large="${x.img.large}" aria-label="Enlarge photo: ${esc(xalt)}">${mainImg(x.img, xalt, true)}</a>`;
       const xbody = `${header()}
-<main class="wrap piece">${M > 1 ? frame(xphoto, { img: a.extras[pj].img, href: xhref(pj) }, { img: a.extras[nj].img, href: xhref(nj) }) : frame(xphoto)}
+<main class="wrap piece" style="--ar:${(x.img.w / x.img.h).toFixed(4)}">${M > 1 ? frame(xphoto, { img: a.extras[pj].img, href: xhref(pj) }, { img: a.extras[nj].img, href: xhref(nj) }) : frame(xphoto)}
 <div class="panel">${LESS}${ABOUT('photo')}<a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
 <div class="info"><h1>${esc(x.title || x.kind || a.title)}</h1>${sub(x.kind, j, M)}
 ${paras(x.description)}</div>

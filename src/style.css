@@ -213,8 +213,11 @@ dialog#viewer::backdrop{background:var(--dark)}
   .thumbs{margin:0}
 }
 
-/* Phones: the gallery layout. The painting fills everything between the header and a small centred caption
-   (title in italics, date in small capitals), 12px from the edges, like a card beside a painting at a show.
+/* Phones: the gallery layout. The painting hangs 12px from the edges with a small centred caption right under
+   it (title in italics, date in small capitals), like a label beside a painting at a show. The two are centred
+   as a pair, a little above the middle (::before and ::after share the spare wall 42:58), so a wide painting
+   hangs at eye level instead of floating. The frame is the painting's own height (--ar, set by the build),
+   shrinking to fit when the painting is too tall for the screen.
    The description stays hidden: tapping the caption (an invisible button covers it) or pulling it up raises
    the full details over the painting. The round carets stay hidden too; pressing and holding the painting
    fades them in (site.js adds .show), a quick swipe never shows them, and the first painting opened in a
@@ -224,7 +227,9 @@ dialog#viewer::backdrop{background:var(--dark)}
     html:has(main.piece){overscroll-behavior:none}
     body:has(main.piece){height:100svh;min-height:0}
     main.piece{min-height:0}
-    .frame{flex:1;height:auto;min-height:200px}
+    main.piece::before{content:"";flex:42 1 0}
+    main.piece::after{content:"";flex:58 1 0}
+    .frame{flex:0 1 auto;height:calc((100vw - 24px) / var(--ar,.75) + 24px);min-height:200px}
     .slide{padding:12px}
     .chip{opacity:0;pointer-events:none;transition:opacity .35s ease}
     .frame.show .chip,.chip:focus-visible{opacity:1;pointer-events:auto;transition:opacity .16s ease}
@@ -246,6 +251,7 @@ dialog#viewer::backdrop{background:var(--dark)}
     .piece .panel.open h1{font-size:22px;font-weight:400}
     .piece .panel.open .desc{font-size:17px;line-height:1.6}
     .open .less svg{rotate:180deg}
+    /* The opened panel floats, so keep the caption's room: the painting doesn't move. */
     main.piece:has(.panel.open){padding-bottom:var(--cap,0px)}
   }
 }
