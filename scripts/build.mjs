@@ -265,9 +265,12 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const alt = a.alt || a.title;
     const head = N > 1 ? `\n<link rel="prefetch" href="${artHref(next)}"><link rel="prefetch" href="${artHref(prev)}">` : '';
     const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
+    // A piece still being painted ("completed: In progress") has no details to open on phones and tablets:
+    // just its title and status. Giving it a date brings the details back.
+    const still = /in progress/i.test(String(a.completed || ''));
     const body = `${header()}
 <main class="wrap piece" style="--ar:${(a.img.w / a.img.h).toFixed(4)}">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
-<div class="panel">${LESS}${ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
+<div class="panel${still ? ' still' : ''}">${still ? '' : LESS + ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
     const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').replace(/\s+/g, ' ').trim().slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });

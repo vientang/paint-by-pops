@@ -15,6 +15,9 @@
 #                 for every piece. Example: lake-at-dawn
 #    title        Shown as the heading.
 #    completed    Optional. Example: October 2026
+#                 Write "In progress" for an unfinished piece: on
+#                 phones and tablets it then shows only its title
+#                 and status, with no description to open.
 #    description  A few sentences. Blank line = new paragraph.
 #                 For a poem, write "description: |" and put each
 #                 line on its own line, indented (see the first piece).

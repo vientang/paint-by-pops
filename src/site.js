@@ -105,8 +105,12 @@
     var side = x < 0 ? sides[1] : sides[0], t = Math.min(1, Math.abs(x) / frame.clientWidth);
     frame.style.transition = animate ? 'height .3s cubic-bezier(.2,.7,.2,1)' : 'none';
     frame.style.height = (x ? h0 + (frameFor(Number(side.getAttribute('data-ar'))) - h0) * t : h0) + 'px';
+    // The caption belongs to the painting leaving, so it fades out (gone by 40% of the way); the next page's
+    // caption fades in with that page.
+    panel.style.transition = animate ? 'opacity .2s ease' : 'none';
+    panel.style.opacity = x ? Math.max(0, 1 - t * 2.5) : '';
     // Sprung back: hand the height back to the stylesheet.
-    if (!x) settle = setTimeout(function () { frame.style.height = frame.style.transition = ''; h0 = 0; }, animate ? 300 : 0);
+    if (!x) settle = setTimeout(function () { frame.style.height = frame.style.transition = panel.style.transition = ''; h0 = 0; }, animate ? 300 : 0);
   }
   function place(x, animate) {
     track.style.transition = animate ? 'transform .3s cubic-bezier(.2,.7,.2,1)' : 'none';

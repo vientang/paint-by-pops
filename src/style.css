@@ -243,6 +243,7 @@ dialog#viewer::backdrop{background:var(--dark)}
     .piece .panel:not(.open) h1{font:italic 400 19px/1.25 var(--serif)}
     .piece .panel:not(.open) .sub{display:block;margin-top:4px;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase}
     .panel:not(.open)::after{content:"";display:block;width:36px;height:5px;margin:12px auto 0;border-radius:3px;background:rgba(43,43,43,.22)}
+    .panel.still::after{display:none}
     .panel:not(.open) .about{display:block;position:absolute;inset:0;z-index:1;width:100%;padding:0;border:0;background:none;color:transparent;font-size:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
     .panel:not(.open) .about svg{display:none}
     .panel:not(.open) .about:focus-visible{outline-offset:-4px}
