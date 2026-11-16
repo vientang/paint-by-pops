@@ -85,11 +85,19 @@ h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
   .home .grid li{width:50%;order:var(--o,0)}
   .home .grid::after{content:"";flex-basis:100%;width:0;order:999}
 }
-/* Floating "next screen" button (phones and tablets). site.js shows it, scrolls one screen per press and
-   fades it out at the bottom. Ordinary scrolling is left alone. */
+/* Home on phones and tablets standing up: the header stays at the top, and the paintings slide under a
+   frosted strip of the paper colour. site.js adds .under (a hairline) once something is beneath it. */
+@media not all and (min-width:900px) and (orientation:landscape){
+  body:has(.home) .top{position:sticky;top:0;z-index:3;background:rgba(246,242,234,.72);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3);transition:box-shadow .25s ease}
+  body:has(.home) .top.under{box-shadow:0 1px 0 rgba(30,27,24,.08)}
+}
+/* Floating double-caret button (phones and tablets). site.js shows it and moves one painting per press,
+   landing its top just under the header. At the bottom the carets turn to point up and a press goes back to
+   the top. Ordinary scrolling is left alone. */
 .pgdn{position:fixed;left:50%;bottom:max(24px,calc(env(safe-area-inset-bottom) + 12px));translate:-50% 0;display:flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border:0;border-radius:24px;background:rgba(30,27,24,.45);color:rgba(246,242,234,.92);cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:opacity .3s ease}
 .pgdn[hidden]{display:none}
-.pgdn.done{opacity:0;pointer-events:none}
+.pgdn svg{transition:rotate .35s cubic-bezier(.32,.72,0,1)}
+.pgdn.up svg{rotate:180deg}
 @media (min-width:700px){ .pgdn{width:52px;height:52px;border-radius:26px} }
 @media (min-width:900px) and (orientation:landscape){ .pgdn{display:none} }
 /* Sideways "next screen" buttons for the strip below, on touch screens (tablets turned sideways), where
@@ -164,12 +172,12 @@ dialog#viewer::backdrop{background:var(--dark)}
    tapping opens the viewer. The neighbouring paintings wait either side of the frame for swiping (site.js) on
    touch screens; round carets float over it. The shadow stays inside the frame's inset, or the frame's edge
    would cut it off in a hard line. */
-.more,.less,.more-room,.more-spot,.about{display:none}
+.less,.about{display:none}
 .frame{position:relative;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .track{display:flex;height:100%}
 .track:has(.side){transform:translateX(-100%)}
 .slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;padding:24px;border-radius:0}
-.frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none}
+.frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none;-webkit-touch-callout:none}
 /* Phones: a 34px circle (::after) inside a 44px see-through tap area, 13px from the screen's edge. Tapping
    doesn't change it (iOS's own tap highlight is off), so it never draws the eye. */
 .chip{position:absolute;top:calc(50% - 22px);display:flex;align-items:center;justify-content:center;width:44px;height:44px;isolation:isolate;color:rgba(246,242,234,.92);-webkit-tap-highlight-color:transparent}
@@ -178,12 +186,8 @@ dialog#viewer::backdrop{background:var(--dark)}
 .chip[rel=prev]{left:8px}
 .chip[rel=next]{right:8px}
 
-/* Phones (and anything that isn't a wide landscape screen). The frame is 4:5 at most, and as tall as it can be
-   while leaving the panel room for a title and four lines of description: 64px header + 12px gap + 185px panel
-   + its bottom padding. The description always takes at least four lines, so the painting stays the same size
-   from piece to piece. The panel below is see-through white, fills the rest of the screen without scrolling,
-   and keeps its text centred so the space above and below it matches. No thumbnails here (more room for the
-   painting). Tablets standing up change this further down. */
+/* Phones (and anything that isn't a wide landscape screen): the shared base. Phones themselves get the
+   gallery layout in the next block; tablets standing up change this further down. */
 @media not all and (min-width:1000px) and (orientation:landscape){
   main.piece{max-width:none;padding:0}
   .frame{flex:none;height:clamp(240px,calc(100svh - 261px - max(20px,env(safe-area-inset-bottom))),calc(min(100vw,760px) * 1.25))}
@@ -192,13 +196,8 @@ dialog#viewer::backdrop{background:var(--dark)}
   .panel .back{min-height:0;margin:-4px 0 8px;font-size:14px}
   .piece h1{margin:0;font-size:26px}
   .piece .sub{display:flex;justify-content:space-between;gap:12px;font-size:14px}
-  .piece .desc{position:relative;min-height:6em;margin-top:10px;font-size:16px;line-height:1.5}
+  .piece .desc{position:relative;margin-top:10px;font-size:16px;line-height:1.5}
   .piece .desc p:first-of-type{margin-top:0}
-  /* Cut off after four lines, ending in "…" and a down caret (site.js adds .clamp only when there's more). */
-  .clamp .desc-text{max-height:6em;overflow:hidden}
-  .clamp .more-room{display:block;float:right;width:0;height:4.5em}
-  .clamp .more-spot{display:block;float:right;clear:both;width:2.75em;height:1.5em}
-  .clamp .more{display:flex;position:absolute;right:-10px;bottom:-10px;align-items:center;gap:2px;height:44px;padding:0 10px;border:0;border-radius:22px;background:none;color:var(--ink);font:inherit;cursor:pointer}
   /* Opened: the whole panel rises over the painting, more solid, with an up caret to close it. */
   .panel.open{position:fixed;left:0;right:0;bottom:0;z-index:5;max-height:85svh;overflow-y:auto;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 -8px 30px rgba(30,27,24,.12)}
   .open .less{display:flex;position:absolute;top:8px;right:12px;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;border-radius:22px;background:none;color:var(--ink);cursor:pointer}
@@ -209,6 +208,49 @@ dialog#viewer::backdrop{background:var(--dark)}
   .strip{display:flex;align-items:center;gap:12px}
   .strip-label{order:1}
   .thumbs{margin:0}
+}
+
+/* Phones: the gallery layout. The painting fills everything between the header and a small centred caption
+   (title in italics, date in small capitals), 12px from the edges, like a card beside a painting at a show.
+   The description stays hidden: tapping the caption (an invisible button covers it) or pulling it up raises
+   the full details over the painting. The round carets stay hidden too; pressing and holding the painting
+   fades them in (site.js adds .show), a quick swipe never shows them, and the first painting opened in a
+   visit shows them briefly as a hint. */
+@media not all and (min-width:1000px) and (orientation:landscape){
+  @media not all and (min-width:700px) and (orientation:portrait){
+    body:has(main.piece){height:100svh;min-height:0}
+    main.piece{min-height:0}
+    .frame{flex:1;height:auto;min-height:200px}
+    .slide{padding:12px}
+    .chip{opacity:0;pointer-events:none;transition:opacity .35s ease}
+    .frame.show .chip,.chip:focus-visible{opacity:1;pointer-events:auto;transition:opacity .16s ease}
+    .frame.show .chip[rel=prev]{animation:chip-in-l .5s cubic-bezier(.2,.7,.2,1)}
+    .frame.show .chip[rel=next]{animation:chip-in-r .5s cubic-bezier(.2,.7,.2,1)}
+
+    .panel{flex:none;justify-content:flex-start;margin:0;padding:4px var(--pad) max(14px,env(safe-area-inset-bottom));border-radius:0;background:none;text-align:center}
+    .panel:not(.open){touch-action:none}
+    .panel:not(.open) .desc,.panel:not(.open) .count{display:none}
+    .panel:not(.open) .back{justify-content:center;margin:0 0 4px}
+    .piece .panel:not(.open) h1{font:italic 400 19px/1.25 var(--serif)}
+    .piece .panel:not(.open) .sub{display:block;margin-top:4px;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase}
+    .panel:not(.open)::after{content:"";display:block;width:36px;height:5px;margin:12px auto 0;border-radius:3px;background:rgba(43,43,43,.22)}
+    .panel:not(.open) .about{display:block;position:absolute;inset:0;z-index:1;width:100%;padding:0;border:0;background:none;color:transparent;font-size:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .panel:not(.open) .about svg{display:none}
+    .panel:not(.open) .about:focus-visible{outline-offset:-4px}
+    /* Opened: rises from the bottom over the painting, with a down caret to close it. */
+    .panel.open{padding:22px var(--pad) max(28px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;text-align:left;animation:sheet-up .45s cubic-bezier(.32,.72,0,1)}
+    .piece .panel.open h1{font-size:22px;font-weight:400}
+    .piece .panel.open .desc{font-size:17px;line-height:1.6}
+    .open .less svg{rotate:180deg}
+    main.piece:has(.panel.open){padding-bottom:var(--cap,0px)}
+  }
+}
+@keyframes chip-in-l{from{translate:8px 0}}
+@keyframes chip-in-r{from{translate:-8px 0}}
+@keyframes sheet-up{from{translate:0 100%}}
+@media (prefers-reduced-motion:reduce){
+  .frame.show .chip,.panel.open{animation:none!important}
+  .pgdn svg{transition:none}
 }
 
 /* Tablets standing up: the painting first. It fills nearly the whole screen above a slim floating bar

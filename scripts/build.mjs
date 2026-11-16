@@ -149,7 +149,7 @@ const SIZES_MAIN = '(min-width:1000px) and (orientation:landscape) min(calc(100v
 const SIZES_GRID = '(min-width:560px) 50vw, 100vw';
 
 const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-const LEFT = 'M15 5 L8 12 L15 19', RIGHT = 'M9 5 L16 12 L9 19', DOWN = 'M5 9 L12 16 L19 9', UP = 'M5 15 L12 8 L19 15';
+const LEFT = 'M15 5 L8 12 L15 19', RIGHT = 'M9 5 L16 12 L9 19', UP = 'M5 15 L12 8 L19 15';
 const X_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>`;
 
 const mainImg = (im, alt, eager) =>
@@ -238,9 +238,8 @@ ${body}
 ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
   const header = (current) => `<header class="top wrap wide"><a class="logo" href="/"><span>Paint By <em>Pops</em></span></a><a class="nav" href="/about/"${current === 'about' ? ' aria-current="page"' : ''}><span>About <span class="long">the artist </span><b>${esc(artist)}</b></span></a></header>`;
-  // Description. On phones and tablets site.js cuts it off after four lines and shows the "more" button
-  // (the two empty spans make room for it at the end of the third line).
-  const paras = (t) => `<div class="desc"><div class="desc-text"><span class="more-room" aria-hidden="true"></span><span class="more-spot" aria-hidden="true"></span>${paragraphs(t)}</div><button class="more" type="button" aria-expanded="false" aria-label="Read the full description"><span aria-hidden="true">…</span>${CARET(DOWN)}</button></div>`;
+  // Description. Hidden on phones until the caption under the painting is opened (site.js).
+  const paras = (t) => `<div class="desc"><div class="desc-text">${paragraphs(t)}</div></div>`;
   const sub = (text, i, n) => text || n > 1 ? `<p class="sub">${text ? `<span>${esc(text)}</span>` : ''}${n > 1 ? `<span class="count">${i + 1} of ${n}</span>` : ''}</p>` : '';
   // The painting. On phones and tablets it sits in a fixed frame between its neighbours, which show while
   // swiping, with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
@@ -248,7 +247,8 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
   const side = (im) => `<div class="slide side" aria-hidden="true">${preloadImg(im)}</div>`;
   const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
   const LESS = `<button class="less" type="button" aria-label="Close the full description">${CARET(UP)}</button>`;
-  // Tablets standing up: the slim bar under the painting opens the details with this (site.js).
+  // Opens the details (site.js). Tablets standing up: "About this piece" in the slim bar. Phones: an invisible
+  // button over the whole caption, so tapping anywhere on it opens the details.
   const ABOUT = (what) => `<button class="about" type="button" aria-expanded="false"><span>About this ${what}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${UP}"/></svg></button>`;
 
   const strip = (a, current) => a.extras.length === 0 ? '' : `<div class="strip"><p class="strip-label">More about this piece</p><ul class="thumbs">${a.extras.map((x, j) =>

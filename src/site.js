@@ -10,18 +10,56 @@
 })();
 
 (function () {
-  // Home page on phones and tablets: the floating double caret scrolls down one screen per press,
-  // and fades out once the bottom is in view. Ordinary scrolling never snaps.
-  var btn = document.querySelector('.pgdn');
-  if (!btn) return;
-  var reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  // Home page on phones and tablets: the header stays at the top, and the floating double caret moves one
+  // painting per press, landing its top edge just under the header:
+  //  - a painting nudged only a little under the header (under a fifth of it, at most 96px) comes back into
+  //    full view, so a small accidental scroll doesn't skip it;
+  //  - otherwise the first painting whose top is below the header moves up to it (so a painting sitting fully
+  //    in view mid-screen is the one that moves, not the one after it);
+  //  - a painting taller than the screen is shown a screen at a time first;
+  //  - at the bottom the carets turn to point up, and a press goes back to the top.
+  // Two staggered columns (tablets standing up) have no shared rows, so there it moves one screen at a time.
+  // Ordinary scrolling never snaps.
+  var btn = document.querySelector('.pgdn'), head = document.querySelector('.top'), grid = document.querySelector('.home .grid');
+  if (!btn || !head || !grid) return;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)'), staggered = matchMedia('(min-width: 560px) and (orientation: portrait)');
+  var tiles = grid.querySelectorAll('.tile'), TOL = 2, pending = null, pendingTimer = 0;
   btn.hidden = false;
-  function check() {
-    var done = innerHeight + scrollY >= document.documentElement.scrollHeight - 4;
-    btn.classList.toggle('done', done);
-    btn.tabIndex = done ? -1 : 0;
+  function maxScroll() { return document.documentElement.scrollHeight - innerHeight; }
+  function atBottom() { return scrollY >= maxScroll() - 4; }
+  function nudgeLimit(h) { return Math.min(96, h * 0.2); }
+  // Where the next press goes, measured from scroll position st (the target of a scroll still under way,
+  // so quick repeated presses keep moving forward).
+  function target(st) {
+    var h = head.offsetHeight, max = maxScroll(), view = innerHeight - h, line = st + h;
+    if (staggered.matches) return Math.min(st + view, max);
+    var list = [].map.call(tiles, function (el) {
+      var r = el.getBoundingClientRect(), top = r.top + scrollY;
+      return { top: top, bottom: top + r.height, h: r.height };
+    }).sort(function (a, b) { return a.top - b.top; });
+    var cover = list.filter(function (t) { return t.top < line - TOL && t.bottom > line + TOL; })[0];
+    if (cover && line - cover.top <= nudgeLimit(cover.h)) return cover.top - h;
+    var here = cover || list.filter(function (t) { return Math.abs(t.top - line) <= TOL; })[0];
+    if (here && here.bottom > st + innerHeight + 48) return Math.min(st + view * 0.85, here.bottom - innerHeight, max);
+    var next = list.filter(function (t) { return t.top > line + TOL; })[0];
+    return next ? Math.min(next.top - h, max) : max;
   }
-  btn.addEventListener('click', function () { scrollBy({ top: innerHeight, behavior: reduce.matches ? 'auto' : 'smooth' }); });
+  function check() {
+    var up = atBottom();
+    btn.classList.toggle('up', up);
+    btn.setAttribute('aria-label', up ? 'Back to the top' : 'Next painting');
+    head.classList.toggle('under', scrollY > 1);
+    if (pending !== null && Math.abs(scrollY - pending) < 2) pending = null;
+  }
+  btn.addEventListener('click', function () {
+    var to = pending === null && atBottom() ? 0 : target(pending === null ? scrollY : pending);
+    pending = to;
+    clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(function () { pending = null; }, 1200);
+    scrollTo({ top: to, behavior: reduce.matches ? 'auto' : 'smooth' });
+  });
+  // A finger or wheel takes over from a scroll the button started.
+  ['touchstart', 'wheel'].forEach(function (t) { addEventListener(t, function () { pending = null; }, { passive: true }); });
   addEventListener('scroll', check, { passive: true });
   addEventListener('resize', check);
   check();
@@ -31,10 +69,24 @@
   // Artwork pages on phones and touch screens: drag the painting sideways to bring in the previous / next one
   // (they wait either side of the frame), or tap a caret. Past a fifth of the width, or with a quick flick,
   // the strip slides the rest of the way and the next page opens; otherwise it springs back.
+  // On phones the carets stay hidden: pressing and holding the painting fades them in (.show) until 2.5s after
+  // letting go, a quick swipe never shows them, and the first painting opened in a visit shows them briefly.
   var frame = document.querySelector('.frame'), track = frame && frame.querySelector('.track'), chips = frame && frame.querySelector('.chips');
   if (!track || !chips) return;
   var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape), (hover: none)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
-  var start = null, dx = 0, dragging = false, going = false;
+  var phone = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)'), tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
+  var start = null, dx = 0, dragging = false, going = false, held = false, holdTimer = 0, hideTimer = 0;
+  function arrows(ms) {
+    clearTimeout(hideTimer);
+    frame.classList.add('show');
+    if (ms) hideTimer = setTimeout(function () { frame.classList.remove('show'); }, ms);
+  }
+  function arrowsOff(ms) { clearTimeout(hideTimer); hideTimer = setTimeout(function () { frame.classList.remove('show'); }, ms); }
+  if (phone.matches && !tall.matches) {
+    var seen = true;
+    try { seen = sessionStorage.getItem('pbp-arrows') === '1'; sessionStorage.setItem('pbp-arrows', '1'); } catch (_) {}
+    if (!seen) setTimeout(function () { arrows(1400); }, 450);
+  }
   function place(x, animate) {
     track.style.transition = animate ? 'transform .3s cubic-bezier(.2,.7,.2,1)' : 'none';
     track.style.transform = x ? 'translateX(calc(-100% + ' + x + 'px))' : '';
@@ -52,13 +104,18 @@
     if (!narrow.matches || going || !e.isPrimary || e.button > 0 || e.target.closest('.chips')) return;
     start = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
     dx = 0;
+    held = false;
+    clearTimeout(holdTimer);
+    if (phone.matches && !tall.matches) holdTimer = setTimeout(function () { held = true; arrows(0); }, 330);
   });
   frame.addEventListener('pointermove', function (e) {
     if (!start || e.pointerId !== start.id) return;
     var mx = e.clientX - start.x, my = e.clientY - start.y;
     if (!dragging) {
+      if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+      clearTimeout(holdTimer);
       if (Math.abs(mx) < 8) return;
-      if (Math.abs(my) > Math.abs(mx)) { start = null; return; }
+      if (Math.abs(my) > Math.abs(mx)) { start = null; if (held) arrowsOff(2500); return; }
       dragging = true;
       try { frame.setPointerCapture(e.pointerId); } catch (_) {}
     }
@@ -69,15 +126,25 @@
     if (!start || e.pointerId !== start.id) return;
     var fast = Math.abs(dx) / Math.max(1, Date.now() - start.t) > 0.5;
     start = null;
+    clearTimeout(holdTimer);
+    if (held) arrowsOff(2500);
     if (!dragging) return;
     if (Math.abs(dx) > frame.clientWidth / 5 || (fast && Math.abs(dx) > 30)) go(dx < 0 ? 1 : -1);
     else place(0, true);
   });
-  frame.addEventListener('pointercancel', function () { start = null; if (dragging) place(0, true); });
+  frame.addEventListener('pointercancel', function () {
+    start = null;
+    clearTimeout(holdTimer);
+    if (held) arrowsOff(2500);
+    if (dragging) place(0, true);
+  });
+  // A long press shows the carets, not the phone's own image menu.
+  frame.addEventListener('contextmenu', function (e) { if (phone.matches && !tall.matches) e.preventDefault(); });
   frame.addEventListener('dragstart', function (e) { e.preventDefault(); });
-  // A drag isn't a tap: don't open the photo viewer after one.
+  // A drag or a long press isn't a tap: don't open the photo viewer after one.
   frame.addEventListener('click', function (e) {
-    if (dragging) { e.preventDefault(); e.stopPropagation(); }
+    if (e.target.closest('.chips')) return;
+    if (dragging || held) { e.preventDefault(); e.stopPropagation(); }
   }, true);
   chips.addEventListener('click', function (e) {
     var a = e.target.closest('a');
@@ -93,33 +160,39 @@
 })();
 
 (function () {
-  // Artwork pages on phones: the description stops after four lines with "…" and a down caret.
-  // Tapping it raises the whole panel over the painting to show everything; the up caret (or Escape) lowers it.
+  // Artwork pages on phones: only a small caption shows under the painting. Tapping it (an invisible button
+  // covers it) or pulling it up raises the whole panel over the painting with the full description; the
+  // down caret, Escape, a tap outside or a pull down lowers it.
   // (Tablets standing up use the slim bar below instead; wide screens show the whole description.)
-  var panel = document.querySelector('.panel'), more = panel && panel.querySelector('.more'), less = panel && panel.querySelector('.less');
-  if (!more || !less) return;
-  var text = panel.querySelector('.desc-text'), narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)');
-  var tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
+  var panel = document.querySelector('.panel'), about = panel && panel.querySelector('.about'), less = panel && panel.querySelector('.less');
+  if (!about || !less) return;
+  var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)'), tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
   function phone() { return narrow.matches && !tall.matches; }
-  function fit() {
-    panel.classList.remove('clamp');
-    if (!phone() || panel.classList.contains('open')) return;
-    panel.classList.add('clamp');
-    if (text.scrollHeight <= text.clientHeight + 1) panel.classList.remove('clamp');
-  }
+  function isOpen() { return panel.classList.contains('open'); }
   function open(on) {
+    // The opened panel floats over the painting, so keep the caption's room below it: the painting stays put.
+    if (on && !isOpen()) panel.parentNode.style.setProperty('--cap', panel.offsetHeight + 'px');
     panel.classList.toggle('open', on);
-    more.setAttribute('aria-expanded', String(on));
-    fit();
-    (on ? less : more).focus();
+    if (!on) panel.scrollTop = 0;
+    about.setAttribute('aria-expanded', String(on));
+    less.setAttribute('aria-expanded', String(on));
+    (on ? less : about).focus({ preventScroll: true });
   }
-  more.addEventListener('click', function () { open(true); });
+  about.addEventListener('click', function () { if (phone()) open(true); });
   less.addEventListener('click', function () { if (phone()) open(false); });
-  document.addEventListener('keydown', function (e) { if (phone() && e.key === 'Escape' && panel.classList.contains('open')) open(false); });
-  document.addEventListener('click', function (e) { if (phone() && panel.classList.contains('open') && !panel.contains(e.target)) open(false); });
-  addEventListener('resize', fit);
-  if (document.fonts) document.fonts.ready.then(fit);
-  fit();
+  document.addEventListener('keydown', function (e) { if (phone() && e.key === 'Escape' && isOpen() && !document.querySelector('dialog[open]')) open(false); });
+  document.addEventListener('click', function (e) { if (phone() && isOpen() && !panel.contains(e.target)) open(false); });
+  // Pull the caption up to open; pull the opened panel down (from its top) to close.
+  // (Touch events, not pointer events: those stop the moment the opened panel starts scrolling.)
+  var y0 = null;
+  panel.addEventListener('touchstart', function (e) { y0 = phone() && (!isOpen() || panel.scrollTop <= 0) ? e.touches[0].clientY : null; }, { passive: true });
+  panel.addEventListener('touchmove', function (e) {
+    if (y0 === null) return;
+    var dy = e.touches[0].clientY - y0;
+    if (!isOpen() && dy < -24) { y0 = null; open(true); }
+    else if (isOpen() && dy > 48 && panel.scrollTop <= 0) { y0 = null; open(false); }
+  }, { passive: true });
+  panel.addEventListener('touchend', function () { y0 = null; }, { passive: true });
 })();
 
 (function () {
