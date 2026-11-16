@@ -169,30 +169,61 @@
   var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)'), tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
   function phone() { return narrow.matches && !tall.matches; }
   function isOpen() { return panel.classList.contains('open'); }
-  function open(on) {
+  // Focus only follows the panel for keyboard users; after a tap or a pull it would leave a focus ring behind.
+  function open(on, moveFocus) {
     // The opened panel floats over the painting, so keep the caption's room below it: the painting stays put.
     if (on && !isOpen()) panel.parentNode.style.setProperty('--cap', panel.offsetHeight + 'px');
     panel.classList.toggle('open', on);
     if (!on) panel.scrollTop = 0;
     about.setAttribute('aria-expanded', String(on));
     less.setAttribute('aria-expanded', String(on));
-    (on ? less : about).focus({ preventScroll: true });
+    if (moveFocus) (on ? less : about).focus({ preventScroll: true });
+    else if (panel.contains(document.activeElement)) document.activeElement.blur();
   }
-  about.addEventListener('click', function () { if (phone()) open(true); });
-  less.addEventListener('click', function () { if (phone()) open(false); });
-  document.addEventListener('keydown', function (e) { if (phone() && e.key === 'Escape' && isOpen() && !document.querySelector('dialog[open]')) open(false); });
-  document.addEventListener('click', function (e) { if (phone() && isOpen() && !panel.contains(e.target)) open(false); });
-  // Pull the caption up to open; pull the opened panel down (from its top) to close.
-  // (Touch events, not pointer events: those stop the moment the opened panel starts scrolling.)
-  var y0 = null;
-  panel.addEventListener('touchstart', function (e) { y0 = phone() && (!isOpen() || panel.scrollTop <= 0) ? e.touches[0].clientY : null; }, { passive: true });
+  // A click with no taps behind it (detail 0) came from the keyboard.
+  about.addEventListener('click', function (e) { if (phone()) open(true, e.detail === 0); });
+  less.addEventListener('click', function (e) { if (phone()) open(false, e.detail === 0); });
+  document.addEventListener('keydown', function (e) { if (phone() && e.key === 'Escape' && isOpen() && !document.querySelector('dialog[open]')) open(false, true); });
+  document.addEventListener('click', function (e) { if (phone() && isOpen() && !panel.contains(e.target)) open(false, false); });
+
+  // Pull the caption up to open. Pull the opened panel down from its top to close: it follows the finger, and
+  // goes past 80px or with a downward flick; otherwise it springs back. While it's being pulled the page itself
+  // doesn't move. (Touch events, not pointer events: those stop the moment the panel starts scrolling.)
+  var y0 = null, t0 = 0, dy = 0, pulling = false;
+  function slide(y, animate) {
+    panel.style.transition = animate ? 'translate .28s cubic-bezier(.32,.72,0,1)' : 'none';
+    panel.style.translate = y ? '0 ' + y + 'px' : '';
+  }
+  panel.addEventListener('touchstart', function (e) {
+    y0 = phone() ? e.touches[0].clientY : null;
+    t0 = Date.now(); dy = 0; pulling = false;
+  }, { passive: true });
   panel.addEventListener('touchmove', function (e) {
     if (y0 === null) return;
-    var dy = e.touches[0].clientY - y0;
-    if (!isOpen() && dy < -24) { y0 = null; open(true); }
-    else if (isOpen() && dy > 48 && panel.scrollTop <= 0) { y0 = null; open(false); }
-  }, { passive: true });
-  panel.addEventListener('touchend', function () { y0 = null; }, { passive: true });
+    dy = e.touches[0].clientY - y0;
+    if (!isOpen()) {
+      if (dy < -24) { y0 = null; open(true, false); }
+      return;
+    }
+    if (!pulling) {
+      if (dy > 6 && panel.scrollTop <= 0) pulling = true;
+      // Moving up, or the description is scrolled down: let it scroll instead.
+      else { if (Math.abs(dy) > 6) y0 = null; return; }
+    }
+    e.preventDefault();
+    slide(Math.max(0, dy), false);
+  }, { passive: false });
+  function release() {
+    if (!pulling) { y0 = null; return; }
+    pulling = false; y0 = null;
+    var flick = dy / Math.max(1, Date.now() - t0) > 0.5 && dy > 24;
+    if (dy > 80 || flick) {
+      slide(panel.offsetHeight, true);
+      setTimeout(function () { open(false, false); slide(0, false); }, 280);
+    } else slide(0, true);
+  }
+  panel.addEventListener('touchend', release, { passive: true });
+  panel.addEventListener('touchcancel', release, { passive: true });
 })();
 
 (function () {

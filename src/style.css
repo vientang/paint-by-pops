@@ -177,7 +177,10 @@ dialog#viewer::backdrop{background:var(--dark)}
 .track{display:flex;height:100%}
 .track:has(.side){transform:translateX(-100%)}
 .slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;padding:24px;border-radius:0}
-.frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none;-webkit-touch-callout:none}
+.frame .slide img{max-width:100%;max-height:100%;margin:0;border-radius:2px;box-shadow:0 6px 14px rgba(30,27,24,.24),0 1px 3px rgba(30,27,24,.14);-webkit-user-drag:none}
+/* No iPhone link preview / image menu on a long press: that press shows the carets instead (site.js). The
+   painting is a link to the large photo, so this has to cover the link, not just the image. */
+.frame,.frame a,.frame img{-webkit-touch-callout:none}
 /* Phones: a 34px circle (::after) inside a 44px see-through tap area, 13px from the screen's edge. Tapping
    doesn't change it (iOS's own tap highlight is off), so it never draws the eye. */
 .chip{position:absolute;top:calc(50% - 22px);display:flex;align-items:center;justify-content:center;width:44px;height:44px;isolation:isolate;color:rgba(246,242,234,.92);-webkit-tap-highlight-color:transparent}
@@ -218,6 +221,7 @@ dialog#viewer::backdrop{background:var(--dark)}
    visit shows them briefly as a hint. */
 @media not all and (min-width:1000px) and (orientation:landscape){
   @media not all and (min-width:700px) and (orientation:portrait){
+    html:has(main.piece){overscroll-behavior:none}
     body:has(main.piece){height:100svh;min-height:0}
     main.piece{min-height:0}
     .frame{flex:1;height:auto;min-height:200px}
@@ -238,7 +242,7 @@ dialog#viewer::backdrop{background:var(--dark)}
     .panel:not(.open) .about svg{display:none}
     .panel:not(.open) .about:focus-visible{outline-offset:-4px}
     /* Opened: rises from the bottom over the painting, with a down caret to close it. */
-    .panel.open{padding:22px var(--pad) max(28px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;text-align:left;animation:sheet-up .45s cubic-bezier(.32,.72,0,1)}
+    .panel.open{overscroll-behavior:contain;padding:22px var(--pad) max(28px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;text-align:left;animation:sheet-up .45s cubic-bezier(.32,.72,0,1)}
     .piece .panel.open h1{font-size:22px;font-weight:400}
     .piece .panel.open .desc{font-size:17px;line-height:1.6}
     .open .less svg{rotate:180deg}
