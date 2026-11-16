@@ -1,3 +1,13 @@
+// Layouts, matching the breakpoints in style.css. "Phone" is anything that isn't a wide landscape screen or a
+// tablet standing up (phones turned sideways included).
+var MQ = {
+  wide: matchMedia('(min-width: 1000px) and (orientation: landscape)'),
+  tall: matchMedia('(min-width: 700px) and (orientation: portrait)'),
+  touch: matchMedia('(hover: none)'),
+  reduce: matchMedia('(prefers-reduced-motion: reduce)')
+};
+function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
+
 (function () {
   // Home page on desktop: a mouse wheel scrolls the sideways strip of paintings (trackpads already can).
   var grid = document.querySelector('.home .grid');
@@ -22,12 +32,13 @@
   // Ordinary scrolling never snaps.
   var btn = document.querySelector('.pgdn'), head = document.querySelector('.top'), grid = document.querySelector('.home .grid');
   if (!btn || !head || !grid) return;
-  var reduce = matchMedia('(prefers-reduced-motion: reduce)'), staggered = matchMedia('(min-width: 560px) and (orientation: portrait)');
-  var tiles = grid.querySelectorAll('.tile'), TOL = 2, pending = null, pendingTimer = 0;
+  var staggered = matchMedia('(min-width: 560px) and (orientation: portrait)');
+  var tiles = grid.querySelectorAll('.tile'), pending = null, pendingTimer = 0;
+  var TOL = 2, NUDGE_SHARE = 0.2, NUDGE_MAX = 96, AT_BOTTOM = 4, TALL_EXTRA = 48, OVERLAP = 0.85;
   btn.hidden = false;
   function maxScroll() { return document.documentElement.scrollHeight - innerHeight; }
-  function atBottom() { return scrollY >= maxScroll() - 4; }
-  function nudgeLimit(h) { return Math.min(96, h * 0.2); }
+  function atBottom() { return scrollY >= maxScroll() - AT_BOTTOM; }
+  function nudgeLimit(h) { return Math.min(NUDGE_MAX, h * NUDGE_SHARE); }
   // Where the next press goes, measured from scroll position st (the target of a scroll still under way,
   // so quick repeated presses keep moving forward).
   function target(st) {
@@ -40,7 +51,7 @@
     var cover = list.filter(function (t) { return t.top < line - TOL && t.bottom > line + TOL; })[0];
     if (cover && line - cover.top <= nudgeLimit(cover.h)) return cover.top - h;
     var here = cover || list.filter(function (t) { return Math.abs(t.top - line) <= TOL; })[0];
-    if (here && here.bottom > st + innerHeight + 48) return Math.min(st + view * 0.85, here.bottom - innerHeight, max);
+    if (here && here.bottom > st + innerHeight + TALL_EXTRA) return Math.min(st + view * OVERLAP, here.bottom - innerHeight, max);
     var next = list.filter(function (t) { return t.top > line + TOL; })[0];
     return next ? Math.min(next.top - h, max) : max;
   }
@@ -56,7 +67,7 @@
     pending = to;
     clearTimeout(pendingTimer);
     pendingTimer = setTimeout(function () { pending = null; }, 1200);
-    scrollTo({ top: to, behavior: reduce.matches ? 'auto' : 'smooth' });
+    scrollTo({ top: to, behavior: MQ.reduce.matches ? 'auto' : 'smooth' });
   });
   // A finger or wheel takes over from a scroll the button started.
   ['touchstart', 'wheel'].forEach(function (t) { addEventListener(t, function () { pending = null; }, { passive: true }); });
@@ -76,8 +87,7 @@
   // page puts it: only the words and the wall colour change.
   var frame = document.querySelector('.frame'), track = frame && frame.querySelector('.track'), chips = frame && frame.querySelector('.chips');
   if (!track || !chips) return;
-  var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape), (hover: none)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
-  var phone = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)'), tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
+  var HOLD = 330, LINGER = 2500, HINT_AFTER = 450, HINT_FOR = 1400, SLIDE = 300, EASE = 'cubic-bezier(.2,.7,.2,1)', CAPTION_GONE = 0.4;
   var start = null, dx = 0, dragging = false, going = false, held = false, holdTimer = 0, hideTimer = 0;
   function arrows(ms) {
     clearTimeout(hideTimer);
@@ -85,35 +95,37 @@
     if (ms) hideTimer = setTimeout(function () { frame.classList.remove('show'); }, ms);
   }
   function arrowsOff(ms) { clearTimeout(hideTimer); hideTimer = setTimeout(function () { frame.classList.remove('show'); }, ms); }
-  if (phone.matches && !tall.matches) {
+  if (isPhone()) {
     var seen = true;
     try { seen = sessionStorage.getItem('pbp-arrows') === '1'; sessionStorage.setItem('pbp-arrows', '1'); } catch (_) {}
-    if (!seen) setTimeout(function () { arrows(1400); }, 450);
+    if (!seen) setTimeout(function () { arrows(HINT_FOR); }, HINT_AFTER);
   }
   var sides = track.querySelectorAll('.side'), panel = document.querySelector('.panel'), h0 = 0, settle = 0;
-  function hangs() { return phone.matches && !tall.matches && sides.length === 2 && panel; }
-  // The frame height style.css gives a painting of this shape: its height at full width, or all the room there is.
+  function hangs() { return isPhone() && sides.length === 2 && panel; }
+  // The frame height style.css gives a painting of this shape: the painting at full width plus its margin
+  // (the slides' padding) all round, within the room there is and no less than the frame's min-height. The margin
+  // and minimum are read from the page, so changing them in style.css keeps swipes landing exactly.
   function frameFor(ar) {
-    var main = frame.parentNode, cs = getComputedStyle(main);
+    var main = frame.parentNode, cs = getComputedStyle(main), mat = 2 * parseFloat(getComputedStyle(sides[0]).paddingLeft);
     var room = main.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (panel.classList.contains('open') ? 0 : panel.offsetHeight);
-    return Math.max(200, Math.min(room, (frame.clientWidth - 24) / ar + 24));
+    return Math.max(parseFloat(getComputedStyle(frame).minHeight) || 0, Math.min(room, (frame.clientWidth - mat) / ar + mat));
   }
   function reshape(x, animate) {
     if (!hangs()) return;
     clearTimeout(settle);
     if (!h0) h0 = frame.offsetHeight;
     var side = x < 0 ? sides[1] : sides[0], t = Math.min(1, Math.abs(x) / frame.clientWidth);
-    frame.style.transition = animate ? 'height .3s cubic-bezier(.2,.7,.2,1)' : 'none';
+    frame.style.transition = animate ? 'height ' + SLIDE + 'ms ' + EASE : 'none';
     frame.style.height = (x ? h0 + (frameFor(Number(side.getAttribute('data-ar'))) - h0) * t : h0) + 'px';
-    // The caption belongs to the painting leaving, so it fades out (gone by 40% of the way); the next page's
-    // caption fades in with that page.
+    // The caption belongs to the painting leaving, so it fades out (gone CAPTION_GONE of the way across); the next
+    // page's caption fades in with that page.
     panel.style.transition = animate ? 'opacity .2s ease' : 'none';
-    panel.style.opacity = x ? Math.max(0, 1 - t * 2.5) : '';
+    panel.style.opacity = x ? Math.max(0, 1 - t / CAPTION_GONE) : '';
     // Sprung back: hand the height back to the stylesheet.
-    if (!x) settle = setTimeout(function () { frame.style.height = frame.style.transition = panel.style.transition = ''; h0 = 0; }, animate ? 300 : 0);
+    if (!x) settle = setTimeout(function () { frame.style.height = frame.style.transition = panel.style.transition = ''; h0 = 0; }, animate ? SLIDE : 0);
   }
   function place(x, animate) {
-    track.style.transition = animate ? 'transform .3s cubic-bezier(.2,.7,.2,1)' : 'none';
+    track.style.transition = animate ? 'transform ' + SLIDE + 'ms ' + EASE : 'none';
     track.style.transform = x ? 'translateX(calc(-100% + ' + x + 'px))' : '';
     reshape(x, animate);
   }
@@ -121,18 +133,19 @@
     var a = chips.querySelector('a[rel=' + (dir > 0 ? 'next' : 'prev') + ']');
     if (going || !a) return;
     going = true;
-    if (reduce.matches) { location.href = a.href; return; }
+    if (MQ.reduce.matches) { location.href = a.href; return; }
     place(-dir * frame.clientWidth, true);
-    setTimeout(function () { location.href = a.href; }, 300);
+    setTimeout(function () { location.href = a.href; }, SLIDE);
   }
   frame.addEventListener('pointerdown', function (e) {
     dragging = false;
-    if (!narrow.matches || going || !e.isPrimary || e.button > 0 || e.target.closest('.chips')) return;
+    // Swiping works on phones and on any touch screen (tablets turned sideways); not with a mouse on desktop.
+    if ((MQ.wide.matches && !MQ.touch.matches) || going || !e.isPrimary || e.button > 0 || e.target.closest('.chips')) return;
     start = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
     dx = 0;
     held = false;
     clearTimeout(holdTimer);
-    if (phone.matches && !tall.matches) holdTimer = setTimeout(function () { held = true; arrows(0); }, 330);
+    if (isPhone()) holdTimer = setTimeout(function () { held = true; arrows(0); }, HOLD);
   });
   frame.addEventListener('pointermove', function (e) {
     if (!start || e.pointerId !== start.id) return;
@@ -141,7 +154,7 @@
       if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
       clearTimeout(holdTimer);
       if (Math.abs(mx) < 8) return;
-      if (Math.abs(my) > Math.abs(mx)) { start = null; if (held) arrowsOff(2500); return; }
+      if (Math.abs(my) > Math.abs(mx)) { start = null; if (held) arrowsOff(LINGER); return; }
       dragging = true;
       try { frame.setPointerCapture(e.pointerId); } catch (_) {}
     }
@@ -153,7 +166,7 @@
     var fast = Math.abs(dx) / Math.max(1, Date.now() - start.t) > 0.5;
     start = null;
     clearTimeout(holdTimer);
-    if (held) arrowsOff(2500);
+    if (held) arrowsOff(LINGER);
     if (!dragging) return;
     if (Math.abs(dx) > frame.clientWidth / 5 || (fast && Math.abs(dx) > 30)) go(dx < 0 ? 1 : -1);
     else place(0, true);
@@ -161,11 +174,11 @@
   frame.addEventListener('pointercancel', function () {
     start = null;
     clearTimeout(holdTimer);
-    if (held) arrowsOff(2500);
+    if (held) arrowsOff(LINGER);
     if (dragging) place(0, true);
   });
   // A long press shows the carets, not the phone's own image menu.
-  frame.addEventListener('contextmenu', function (e) { if (phone.matches && !tall.matches) e.preventDefault(); });
+  frame.addEventListener('contextmenu', function (e) { if (isPhone()) e.preventDefault(); });
   frame.addEventListener('dragstart', function (e) { e.preventDefault(); });
   // A drag or a long press isn't a tap: don't open the photo viewer after one.
   frame.addEventListener('click', function (e) {
@@ -192,8 +205,7 @@
   // (Tablets standing up use the slim bar below instead; wide screens show the whole description.)
   var panel = document.querySelector('.panel'), about = panel && panel.querySelector('.about'), less = panel && panel.querySelector('.less');
   if (!about || !less) return;
-  var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape)'), tall = matchMedia('(min-width: 700px) and (orientation: portrait)');
-  function phone() { return narrow.matches && !tall.matches; }
+  var PULL_OPEN = 24, PULL_CLOSE = 80, FLICK = 0.5, START = 6, phone = isPhone;
   function isOpen() { return panel.classList.contains('open'); }
   // Focus only follows the panel for keyboard users; after a tap or a pull it would leave a focus ring behind.
   function open(on, moveFocus) {
@@ -213,7 +225,7 @@
   document.addEventListener('click', function (e) { if (phone() && isOpen() && !panel.contains(e.target)) open(false, false); });
 
   // Pull the caption up to open. Pull the opened panel down from its top to close: it follows the finger, and
-  // goes past 80px or with a downward flick; otherwise it springs back. While it's being pulled the page itself
+  // goes past PULL_CLOSE px or with a downward flick; otherwise it springs back. While it's being pulled the page itself
   // doesn't move. (Touch events, not pointer events: those stop the moment the panel starts scrolling.)
   var y0 = null, t0 = 0, dy = 0, pulling = false;
   function slide(y, animate) {
@@ -228,13 +240,13 @@
     if (y0 === null) return;
     dy = e.touches[0].clientY - y0;
     if (!isOpen()) {
-      if (dy < -24) { y0 = null; open(true, false); }
+      if (dy < -PULL_OPEN) { y0 = null; open(true, false); }
       return;
     }
     if (!pulling) {
-      if (dy > 6 && panel.scrollTop <= 0) pulling = true;
+      if (dy > START && panel.scrollTop <= 0) pulling = true;
       // Moving up, or the description is scrolled down: let it scroll instead.
-      else { if (Math.abs(dy) > 6) y0 = null; return; }
+      else { if (Math.abs(dy) > START) y0 = null; return; }
     }
     e.preventDefault();
     slide(Math.max(0, dy), false);
@@ -242,9 +254,9 @@
   function release() {
     if (!pulling) { y0 = null; return; }
     pulling = false; y0 = null;
-    var flick = dy / Math.max(1, Date.now() - t0) > 0.5 && dy > 24;
+    var flick = dy / Math.max(1, Date.now() - t0) > FLICK && dy > PULL_OPEN;
     // Closing shows the caption straight away, the same as the close caret.
-    if (dy > 80 || flick) { slide(0, false); open(false, false); }
+    if (dy > PULL_CLOSE || flick) { slide(0, false); open(false, false); }
     else slide(0, true);
   }
   panel.addEventListener('touchend', release, { passive: true });
@@ -259,7 +271,7 @@
   var piece = document.querySelector('main.piece'), panel = piece && piece.querySelector('.panel');
   var about = panel && panel.querySelector('.about'), less = panel && panel.querySelector('.less');
   if (!about || !less) return;
-  var tall = matchMedia('(min-width: 700px) and (orientation: portrait)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  var tall = MQ.tall, reduce = MQ.reduce;
   var KEY = 'pbp-details', bar = 84, timer = 0, first = true;
   function remember(on) { try { if (on) sessionStorage.setItem(KEY, '1'); else sessionStorage.removeItem(KEY); } catch (_) {} }
   function remembered() { try { return sessionStorage.getItem(KEY) === '1'; } catch (_) { return false; } }
@@ -327,7 +339,7 @@
   // strip one screen at a time, and each fades out at its end.
   var grid = document.querySelector('.home .grid'), btns = document.querySelectorAll('.spage');
   if (!grid || !btns.length) return;
-  var reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  var reduce = MQ.reduce;
   function check() {
     var max = grid.scrollWidth - grid.clientWidth;
     [].forEach.call(btns, function (b) {
@@ -400,7 +412,7 @@
   // down to 26px (below that it wraps). Measured in the browser, so it works for any title.
   var h = document.querySelector('.piece h1');
   if (!h) return;
-  var wide = matchMedia('(min-width: 1000px) and (orientation: landscape)'), MIN = 26;
+  var wide = MQ.wide, MIN = 26;
   function fit() {
     h.style.fontSize = '';
     if (!wide.matches) return;
