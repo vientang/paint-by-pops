@@ -87,7 +87,7 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   // page puts it: only the words and the wall colour change.
   var frame = document.querySelector('.frame'), track = frame && frame.querySelector('.track'), chips = frame && frame.querySelector('.chips');
   if (!track || !chips) return;
-  var HOLD = 330, LINGER = 2500, HINT_AFTER = 450, HINT_FOR = 1400, SLIDE = 300, EASE = 'cubic-bezier(.2,.7,.2,1)', CAPTION_GONE = 0.4;
+  var HOLD = 330, LINGER = 2500, HINT_AFTER = 450, HINT_FOR = 1400, SLIDE = 300, EASE = 'cubic-bezier(.2,.7,.2,1)', CAPTION_GONE = 0.4, OPEN_KEY = 'pbp-open';
   var start = null, dx = 0, dragging = false, going = false, held = false, holdTimer = 0, hideTimer = 0;
   function arrows(ms) {
     clearTimeout(hideTimer);
@@ -101,6 +101,7 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     if (!seen) setTimeout(function () { arrows(HINT_FOR); }, HINT_AFTER);
   }
   var sides = track.querySelectorAll('.side'), panel = document.querySelector('.panel'), h0 = 0, settle = 0;
+  var words = panel ? [].slice.call(panel.querySelectorAll('.info, .back')) : [];
   function hangs() { return isPhone() && sides.length === 2 && panel; }
   // The frame height style.css gives a painting of this shape: the painting at full width plus its margin
   // (the slides' padding) all round, within the room there is and no less than the frame's min-height. The margin
@@ -117,12 +118,19 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     var side = x < 0 ? sides[1] : sides[0], t = Math.min(1, Math.abs(x) / frame.clientWidth);
     frame.style.transition = animate ? 'height ' + SLIDE + 'ms ' + EASE : 'none';
     frame.style.height = (x ? h0 + (frameFor(Number(side.getAttribute('data-ar'))) - h0) * t : h0) + 'px';
-    // The caption belongs to the painting leaving, so it fades out (gone CAPTION_GONE of the way across); the next
-    // page's caption fades in with that page.
-    panel.style.transition = animate ? 'opacity .2s ease' : 'none';
-    panel.style.opacity = x ? Math.max(0, 1 - t / CAPTION_GONE) : '';
+    // The words belong to the painting leaving, so they fade out (gone CAPTION_GONE of the way across), open or
+    // closed; the next page's fade in with that page. The handle and the opened panel itself stay, since the
+    // next page has the same ones in the same place.
+    words.forEach(function (w) {
+      w.style.transition = animate ? 'opacity .2s ease' : 'none';
+      w.style.opacity = x ? Math.max(0, 1 - t / CAPTION_GONE) : '';
+    });
     // Sprung back: hand the height back to the stylesheet.
-    if (!x) settle = setTimeout(function () { frame.style.height = frame.style.transition = panel.style.transition = ''; h0 = 0; }, animate ? SLIDE : 0);
+    if (!x) settle = setTimeout(function () {
+      frame.style.height = frame.style.transition = '';
+      words.forEach(function (w) { w.style.transition = ''; });
+      h0 = 0;
+    }, animate ? SLIDE : 0);
   }
   function place(x, animate) {
     track.style.transition = animate ? 'transform ' + SLIDE + 'ms ' + EASE : 'none';
@@ -133,21 +141,25 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     var a = chips.querySelector('a[rel=' + (dir > 0 ? 'next' : 'prev') + ']');
     if (going || !a) return;
     going = true;
+    // Swiping with the details open on a phone keeps them open on the next page (read by the details script).
+    try { if (isPhone() && panel && panel.classList.contains('open')) sessionStorage.setItem(OPEN_KEY, a.pathname); } catch (_) {}
     if (MQ.reduce.matches) { location.href = a.href; return; }
     place(-dir * frame.clientWidth, true);
     setTimeout(function () { location.href = a.href; }, SLIDE);
   }
-  frame.addEventListener('pointerdown', function (e) {
+  // The painting can always be swiped; on phones the opened details can be too (the caption alone can't).
+  // el is whichever of the two the finger started on.
+  function down(el, e) {
     dragging = false;
     // Swiping works on phones and on any touch screen (tablets turned sideways); not with a mouse on desktop.
     if ((MQ.wide.matches && !MQ.touch.matches) || going || !e.isPrimary || e.button > 0 || e.target.closest('.chips')) return;
-    start = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+    start = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId, el: el };
     dx = 0;
     held = false;
     clearTimeout(holdTimer);
-    if (isPhone()) holdTimer = setTimeout(function () { held = true; arrows(0); }, HOLD);
-  });
-  frame.addEventListener('pointermove', function (e) {
+    if (isPhone() && el === frame) holdTimer = setTimeout(function () { held = true; arrows(0); }, HOLD);
+  }
+  function move(e) {
     if (!start || e.pointerId !== start.id) return;
     var mx = e.clientX - start.x, my = e.clientY - start.y;
     if (!dragging) {
@@ -156,12 +168,12 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
       if (Math.abs(mx) < 8) return;
       if (Math.abs(my) > Math.abs(mx)) { start = null; if (held) arrowsOff(LINGER); return; }
       dragging = true;
-      try { frame.setPointerCapture(e.pointerId); } catch (_) {}
+      try { start.el.setPointerCapture(e.pointerId); } catch (_) {}
     }
     dx = mx;
     place(dx, false);
-  });
-  frame.addEventListener('pointerup', function (e) {
+  }
+  function up(e) {
     if (!start || e.pointerId !== start.id) return;
     var fast = Math.abs(dx) / Math.max(1, Date.now() - start.t) > 0.5;
     start = null;
@@ -170,13 +182,23 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     if (!dragging) return;
     if (Math.abs(dx) > frame.clientWidth / 5 || (fast && Math.abs(dx) > 30)) go(dx < 0 ? 1 : -1);
     else place(0, true);
-  });
-  frame.addEventListener('pointercancel', function () {
+  }
+  function cancel() {
     start = null;
     clearTimeout(holdTimer);
     if (held) arrowsOff(LINGER);
     if (dragging) place(0, true);
+  }
+  frame.addEventListener('pointerdown', function (e) { down(frame, e); });
+  if (panel) panel.addEventListener('pointerdown', function (e) { if (isPhone() && panel.classList.contains('open')) down(panel, e); });
+  [frame, panel].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', cancel);
   });
+  // A swipe across the details isn't a tap on them (the close caret, say).
+  if (panel) panel.addEventListener('click', function (e) { if (dragging) { e.preventDefault(); e.stopPropagation(); } }, true);
   // A long press shows the carets, not the phone's own image menu.
   frame.addEventListener('contextmenu', function (e) { if (isPhone()) e.preventDefault(); });
   frame.addEventListener('dragstart', function (e) { e.preventDefault(); });
@@ -209,6 +231,7 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   function isOpen() { return panel.classList.contains('open'); }
   // Focus only follows the panel for keyboard users; after a tap or a pull it would leave a focus ring behind.
   function open(on, moveFocus) {
+    if (!on) panel.classList.remove('instant');
     // The opened panel floats over the painting, so keep the caption's room below it: the painting stays put.
     if (on && !isOpen()) panel.parentNode.style.setProperty('--cap', panel.offsetHeight + 'px');
     panel.classList.toggle('open', on);
@@ -227,14 +250,14 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   // Pull the caption up to open. Pull the opened panel down from its top to close: it follows the finger, and
   // goes past PULL_CLOSE px or with a downward flick; otherwise it springs back. While it's being pulled the page itself
   // doesn't move. (Touch events, not pointer events: those stop the moment the panel starts scrolling.)
-  var y0 = null, t0 = 0, dy = 0, pulling = false;
+  var y0 = null, x0 = 0, t0 = 0, dy = 0, pulling = false;
   function slide(y, animate) {
     panel.style.transition = animate ? 'translate .28s cubic-bezier(.32,.72,0,1)' : 'none';
     panel.style.translate = y ? '0 ' + y + 'px' : '';
   }
   panel.addEventListener('touchstart', function (e) {
     y0 = phone() ? e.touches[0].clientY : null;
-    t0 = Date.now(); dy = 0; pulling = false;
+    x0 = e.touches[0].clientX; t0 = Date.now(); dy = 0; pulling = false;
   }, { passive: true });
   panel.addEventListener('touchmove', function (e) {
     if (y0 === null) return;
@@ -244,6 +267,8 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
       return;
     }
     if (!pulling) {
+      // Sideways is a swipe to the next painting (the swipe script), not a pull.
+      if (Math.abs(e.touches[0].clientX - x0) > Math.abs(dy)) { if (Math.abs(dy) > START || Math.abs(e.touches[0].clientX - x0) > START) y0 = null; return; }
       if (dy > START && panel.scrollTop <= 0) pulling = true;
       // Moving up, or the description is scrolled down: let it scroll instead.
       else { if (Math.abs(dy) > START) y0 = null; return; }
@@ -261,6 +286,13 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   }
   panel.addEventListener('touchend', release, { passive: true });
   panel.addEventListener('touchcancel', release, { passive: true });
+
+  // Arrived by swiping with the details open: open them again at once, already up (no rising), so only the
+  // words change. The opened panel keeps room for four lines of description (style.css), so it's the same
+  // height from piece to piece.
+  var carried = false;
+  try { carried = sessionStorage.getItem('pbp-open') === location.pathname; sessionStorage.removeItem('pbp-open'); } catch (_) {}
+  if (carried && phone()) { panel.classList.add('instant'); open(true, false); }
 })();
 
 (function () {

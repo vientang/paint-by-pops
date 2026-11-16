@@ -254,7 +254,13 @@ dialog#viewer::backdrop{background:var(--dark)}
     /* Opened: rises from the bottom over the painting, with a down caret to close it. */
     .panel.open{overscroll-behavior:contain;padding:22px var(--pad) max(28px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;text-align:left;animation:sheet-up .45s cubic-bezier(.32,.72,0,1)}
     .piece .panel.open h1{font-size:22px;font-weight:400}
-    .piece .panel.open .desc{font-size:17px;line-height:1.6}
+    /* Room for four lines of description however short it is, so the opened panel stays the same height while
+       swiping from piece to piece (a longer one makes it taller). */
+    .piece .panel.open .desc{min-height:6.4em;font-size:17px;line-height:1.6}
+    /* Opened panels swipe sideways to the next painting (site.js) and still scroll up and down. */
+    .panel.open{touch-action:pan-y}
+    /* Arrived by swiping with it open: already up, no rising. */
+    .panel.open.instant{animation:none}
     .open .less svg{rotate:180deg}
     /* The opened panel floats, so keep the caption's room: the painting doesn't move. */
     main.piece:has(.panel.open){padding-bottom:var(--cap,0px)}
