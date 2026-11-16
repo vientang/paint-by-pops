@@ -242,9 +242,9 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
   const paras = (t) => `<div class="desc"><div class="desc-text">${paragraphs(t)}</div></div>`;
   const sub = (text, i, n) => text || n > 1 ? `<p class="sub">${text ? `<span>${esc(text)}</span>` : ''}${n > 1 ? `<span class="count">${i + 1} of ${n}</span>` : ''}</p>` : '';
   // The painting. On phones and tablets it sits in a fixed frame between its neighbours, which show while
-  // swiping, with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
+  // swiping (data-ar lets phones reshape the frame to fit the incoming one), with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
   // so the next page is instant).
-  const side = (im) => `<div class="slide side" aria-hidden="true">${preloadImg(im)}</div>`;
+  const side = (im) => `<div class="slide side" data-ar="${(im.w / im.h).toFixed(4)}" aria-hidden="true">${preloadImg(im)}</div>`;
   const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
   const LESS = `<button class="less" type="button" aria-label="Close the full description">${CARET(UP)}</button>`;
   // Opens the details (site.js). Tablets standing up: "About this piece" in the slim bar. Phones: an invisible

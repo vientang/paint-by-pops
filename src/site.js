@@ -71,6 +71,9 @@
   // the strip slides the rest of the way and the next page opens; otherwise it springs back.
   // On phones the carets stay hidden: pressing and holding the painting fades them in (.show) until 2.5s after
   // letting go, a quick swipe never shows them, and the first painting opened in a visit shows them briefly.
+  // Phones also size the frame to each painting (style.css), so while dragging the frame grows or shrinks
+  // toward the incoming painting's size, and by the time the next page opens everything is already where that
+  // page puts it: only the words and the wall colour change.
   var frame = document.querySelector('.frame'), track = frame && frame.querySelector('.track'), chips = frame && frame.querySelector('.chips');
   if (!track || !chips) return;
   var narrow = matchMedia('not all and (min-width: 1000px) and (orientation: landscape), (hover: none)'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -87,9 +90,28 @@
     try { seen = sessionStorage.getItem('pbp-arrows') === '1'; sessionStorage.setItem('pbp-arrows', '1'); } catch (_) {}
     if (!seen) setTimeout(function () { arrows(1400); }, 450);
   }
+  var sides = track.querySelectorAll('.side'), panel = document.querySelector('.panel'), h0 = 0, settle = 0;
+  function hangs() { return phone.matches && !tall.matches && sides.length === 2 && panel; }
+  // The frame height style.css gives a painting of this shape: its height at full width, or all the room there is.
+  function frameFor(ar) {
+    var main = frame.parentNode, cs = getComputedStyle(main);
+    var room = main.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (panel.classList.contains('open') ? 0 : panel.offsetHeight);
+    return Math.max(200, Math.min(room, (frame.clientWidth - 24) / ar + 24));
+  }
+  function reshape(x, animate) {
+    if (!hangs()) return;
+    clearTimeout(settle);
+    if (!h0) h0 = frame.offsetHeight;
+    var side = x < 0 ? sides[1] : sides[0], t = Math.min(1, Math.abs(x) / frame.clientWidth);
+    frame.style.transition = animate ? 'height .3s cubic-bezier(.2,.7,.2,1)' : 'none';
+    frame.style.height = (x ? h0 + (frameFor(Number(side.getAttribute('data-ar'))) - h0) * t : h0) + 'px';
+    // Sprung back: hand the height back to the stylesheet.
+    if (!x) settle = setTimeout(function () { frame.style.height = frame.style.transition = ''; h0 = 0; }, animate ? 300 : 0);
+  }
   function place(x, animate) {
     track.style.transition = animate ? 'transform .3s cubic-bezier(.2,.7,.2,1)' : 'none';
     track.style.transform = x ? 'translateX(calc(-100% + ' + x + 'px))' : '';
+    reshape(x, animate);
   }
   function go(dir) {
     var a = chips.querySelector('a[rel=' + (dir > 0 ? 'next' : 'prev') + ']');
