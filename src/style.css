@@ -256,7 +256,10 @@ dialog#viewer::backdrop{background:var(--dark)}
     .panel:not(.open) .about svg{display:none}
     .panel:not(.open) .about:focus-visible{outline-offset:-4px}
     /* Opened: rises from the bottom over the painting, with a down caret to close it. */
-    .panel.open{overscroll-behavior:contain;padding:22px var(--pad) max(28px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;text-align:left;animation:sheet-up .45s cubic-bezier(.32,.72,0,1)}
+    /* Solid: the frosted white mixed with the wall colour, not a see-through white with a blur behind it. During
+       the page fade WebKit draws the arriving page without backdrop blurs, so a see-through panel turned
+       noticeably more transparent halfway through every swipe. */
+    .panel.open{background:color-mix(in srgb,#fff 82%,var(--bg,var(--paper)));-webkit-backdrop-filter:none;backdrop-filter:none;overscroll-behavior:contain;padding:22px var(--pad) max(28px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;text-align:left;animation:sheet-up .45s cubic-bezier(.32,.72,0,1)}
     .piece .panel.open h1{font-size:22px;font-weight:400}
     /* Room for four lines of description however short it is, so the opened panel stays the same height while
        swiping from piece to piece (a longer one makes it taller). */

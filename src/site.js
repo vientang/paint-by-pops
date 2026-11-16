@@ -148,7 +148,13 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     }
     if (MQ.reduce.matches) { location.href = a.href; return; }
     place(-dir * frame.clientWidth, true);
-    setTimeout(function () { location.href = a.href; }, SLIDE);
+    // When the slide is done, pin it at its end with nothing still animating and let that frame paint before
+    // leaving: WebKit pictures the old page for the cross-fade as it was before any running animation, so a
+    // slide still finishing showed up half-way back, ghosting under the next page.
+    setTimeout(function () {
+      place(-dir * frame.clientWidth, false);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { location.href = a.href; }); });
+    }, SLIDE);
   }
   // The painting can always be swiped; on phones the opened details can be too (the caption alone can't).
   // el is whichever of the two the finger started on.
@@ -248,7 +254,9 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   about.addEventListener('click', function (e) { if (phone()) open(true, e.detail === 0); });
   less.addEventListener('click', function (e) { if (phone()) open(false, e.detail === 0); });
   document.addEventListener('keydown', function (e) { if (phone() && e.key === 'Escape' && isOpen() && !document.querySelector('dialog[open]')) open(false, true); });
-  document.addEventListener('click', function (e) { if (phone() && isOpen() && !panel.contains(e.target)) open(false, false); });
+  // A tap outside closes them, except on the carets over the painting: those go to the next piece, and keep
+  // the details open like a swipe does.
+  document.addEventListener('click', function (e) { if (phone() && isOpen() && !panel.contains(e.target) && !e.target.closest('.chips')) open(false, false); });
 
   // Pull the caption up to open. Pull the opened panel down from its top to close: it follows the finger, and
   // goes past PULL_CLOSE px or with a downward flick; otherwise it springs back. While it's being pulled the page itself
