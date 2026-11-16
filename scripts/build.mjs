@@ -143,13 +143,17 @@ function checkShape(im, file) {
 /* ───────────── HTML pieces ───────────── */
 const minCss = (c) => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};,])\s*/g, '$1').trim();
 const minJs = (j) => j.replace(/^\s*\/\/.*$/gm, '').replace(/\n\s*/g, ' ').trim();
+// A photo's width / height, for --ar and data-ar.
+const ratio = (im) => (im.w / im.h).toFixed(4);
 const srcset = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
 const midOf = (list) => list[Math.min(1, list.length - 1)].url;
-const SIZES_MAIN = '(min-width:1000px) and (orientation:landscape) min(calc(100vw - 548px), 1100px), (min-width:700px) calc(100vw - 64px), calc(100vw - 48px)';
+// How wide the artwork page shows the painting. Keep in step with style.css: phones lose --mat (12px) on each
+// side. The browser treats this as the image's natural width, so too small a value shrinks the painting.
+const SIZES_MAIN = '(min-width:1000px) and (orientation:landscape) min(calc(100vw - 548px), 1100px), (min-width:700px) calc(100vw - 64px), calc(100vw - 24px)';
 const SIZES_GRID = '(min-width:560px) 50vw, 100vw';
 
 const CARET = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-const LEFT = 'M15 5 L8 12 L15 19', RIGHT = 'M9 5 L16 12 L9 19', DOWN = 'M5 9 L12 16 L19 9', UP = 'M5 15 L12 8 L19 15';
+const LEFT = 'M15 5 L8 12 L15 19', RIGHT = 'M9 5 L16 12 L9 19', UP = 'M5 15 L12 8 L19 15';
 const X_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>`;
 
 const mainImg = (im, alt, eager) =>
@@ -238,17 +242,17 @@ ${body}
 ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
   const header = (current) => `<header class="top wrap wide"><a class="logo" href="/"><span>Paint By <em>Pops</em></span></a><a class="nav" href="/about/"${current === 'about' ? ' aria-current="page"' : ''}><span>About <span class="long">the artist </span><b>${esc(artist)}</b></span></a></header>`;
-  // Description. On phones and tablets site.js cuts it off after four lines and shows the "more" button
-  // (the two empty spans make room for it at the end of the third line).
-  const paras = (t) => `<div class="desc"><div class="desc-text"><span class="more-room" aria-hidden="true"></span><span class="more-spot" aria-hidden="true"></span>${paragraphs(t)}</div><button class="more" type="button" aria-expanded="false" aria-label="Read the full description"><span aria-hidden="true">…</span>${CARET(DOWN)}</button></div>`;
+  // Description. Hidden on phones until the caption under the painting is opened (site.js).
+  const paras = (t) => `<div class="desc"><div class="desc-text">${paragraphs(t)}</div></div>`;
   const sub = (text, i, n) => text || n > 1 ? `<p class="sub">${text ? `<span>${esc(text)}</span>` : ''}${n > 1 ? `<span class="count">${i + 1} of ${n}</span>` : ''}</p>` : '';
   // The painting. On phones and tablets it sits in a fixed frame between its neighbours, which show while
-  // swiping, with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
+  // swiping (data-ar lets phones reshape the frame to fit the incoming one), with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
   // so the next page is instant).
-  const side = (im) => `<div class="slide side" aria-hidden="true">${preloadImg(im)}</div>`;
-  const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
+  const side = (im) => `<div class="slide side" data-ar="${ratio(im)}" aria-hidden="true">${preloadImg(im)}</div>`;
+  const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev"${prev.still ? ' data-still' : ''} aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next"${next.still ? ' data-still' : ''} aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
   const LESS = `<button class="less" type="button" aria-label="Close the full description">${CARET(UP)}</button>`;
-  // Tablets standing up: the slim bar under the painting opens the details with this (site.js).
+  // Opens the details (site.js). Tablets standing up: "About this piece" in the slim bar. Phones: an invisible
+  // button over the whole caption, so tapping anywhere on it opens the details.
   const ABOUT = (what) => `<button class="about" type="button" aria-expanded="false"><span>About this ${what}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${UP}"/></svg></button>`;
 
   const strip = (a, current) => a.extras.length === 0 ? '' : `<div class="strip"><p class="strip-label">More about this piece</p><ul class="thumbs">${a.extras.map((x, j) =>
@@ -256,6 +260,10 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
   const bar = (innerStrip, backHref, nextHref) => `<div class="bar">${innerStrip}<nav class="pager" aria-label="Previous and next"><a class="btn icon" href="${backHref}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="btn icon" href="${nextHref}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav></div>`;
 
+  // A piece still being painted ("completed: In progress") has no details to open on phones and tablets:
+  // just its title and status. Giving it a date brings the details back. Its neighbours' carets are marked
+  // (data-still) so a swipe toward it closes opened details first.
+  const inProgress = (a) => /in progress/i.test(String(a.completed || ''));
   const N = artworks.length;
   const artHref = (a) => `/art/${a.id}/`;
 
@@ -265,9 +273,10 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const alt = a.alt || a.title;
     const head = N > 1 ? `\n<link rel="prefetch" href="${artHref(next)}"><link rel="prefetch" href="${artHref(prev)}">` : '';
     const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
+    const still = inProgress(a);
     const body = `${header()}
-<main class="wrap piece">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
-<div class="panel">${LESS}${ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
+<main class="wrap piece" style="--ar:${ratio(a.img)}">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev), still: inProgress(prev) }, { img: next.img, href: artHref(next), still: inProgress(next) }) : frame(photo)}
+<div class="panel${still ? ' still' : ''}">${still ? '' : LESS + ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
     const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').replace(/\s+/g, ' ').trim().slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
@@ -280,7 +289,7 @@ ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
       const xhref = (k) => `/art/${a.id}/${k + 1}/`;
       const xphoto = `<a class="photo slide" href="${x.img.large}" data-large="${x.img.large}" aria-label="Enlarge photo: ${esc(xalt)}">${mainImg(x.img, xalt, true)}</a>`;
       const xbody = `${header()}
-<main class="wrap piece">${M > 1 ? frame(xphoto, { img: a.extras[pj].img, href: xhref(pj) }, { img: a.extras[nj].img, href: xhref(nj) }) : frame(xphoto)}
+<main class="wrap piece" style="--ar:${ratio(x.img)}">${M > 1 ? frame(xphoto, { img: a.extras[pj].img, href: xhref(pj) }, { img: a.extras[nj].img, href: xhref(nj) }) : frame(xphoto)}
 <div class="panel">${LESS}${ABOUT('photo')}<a class="back" href="${artHref(a)}">← Return to ${esc(a.title)}</a>
 <div class="info"><h1>${esc(x.title || x.kind || a.title)}</h1>${sub(x.kind, j, M)}
 ${paras(x.description)}</div>
@@ -306,7 +315,7 @@ ${bar(strip(a, j), xhref(pj), xhref(nj))}</div></main>`;
     cols[c].n += 1;
     return c === 0 ? cols[0].n : 1000 + cols[1].n;
   });
-  const tiles = artworks.map((a, i) => `<li style="--o:${order[i]}"><a class="tile" href="${artHref(a)}" style="--ar:${(a.img.w / a.img.h).toFixed(4)}" aria-label="${esc(a.title)}">${gridImg(a.img, a.alt || a.title, i < 3)}</a></li>`).join('');
+  const tiles = artworks.map((a, i) => `<li style="--o:${order[i]}"><a class="tile" href="${artHref(a)}" style="--ar:${ratio(a.img)}" aria-label="${esc(a.title)}">${gridImg(a.img, a.alt || a.title, i < 3)}</a></li>`).join('');
   const DOUBLE = (d) => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
   const spage = `<button class="spage" type="button" data-dir="-1" aria-label="Back one screen" hidden>${DOUBLE('M19 6 L13 12 L19 18 M11 6 L5 12 L11 18')}</button><button class="spage" type="button" data-dir="1" aria-label="Forward one screen" hidden>${DOUBLE('M5 6 L11 12 L5 18 M13 6 L19 12 L13 18')}</button>`;
   await out('index.html', page({ title: brand, desc: `Artwork by ${artist}`, pal: palette(PAPER_TINTS), canonical: '/', ogImage: artworks[0].img.page[artworks[0].img.page.length - 1].url,
