@@ -217,10 +217,9 @@
     if (!pulling) { y0 = null; return; }
     pulling = false; y0 = null;
     var flick = dy / Math.max(1, Date.now() - t0) > 0.5 && dy > 24;
-    if (dy > 80 || flick) {
-      slide(panel.offsetHeight, true);
-      setTimeout(function () { open(false, false); slide(0, false); }, 280);
-    } else slide(0, true);
+    // Closing shows the caption straight away, the same as the close caret.
+    if (dy > 80 || flick) { slide(0, false); open(false, false); }
+    else slide(0, true);
   }
   panel.addEventListener('touchend', release, { passive: true });
   panel.addEventListener('touchcancel', release, { passive: true });
