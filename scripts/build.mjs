@@ -249,7 +249,7 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
   // swiping (data-ar lets phones reshape the frame to fit the incoming one), with caret buttons over it. On desktop only the painting itself shows (the neighbours still load,
   // so the next page is instant).
   const side = (im) => `<div class="slide side" data-ar="${ratio(im)}" aria-hidden="true">${preloadImg(im)}</div>`;
-  const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
+  const frame = (photo, prev, next) => `<div class="frame"><div class="track">${prev ? side(prev.img) : ''}${photo}${next ? side(next.img) : ''}</div>${prev ? `<nav class="chips" aria-label="Previous and next"><a class="chip" href="${prev.href}" rel="prev"${prev.still ? ' data-still' : ''} aria-label="Previous">${CARET(LEFT)}</a><a class="chip" href="${next.href}" rel="next"${next.still ? ' data-still' : ''} aria-label="Next">${CARET(RIGHT)}</a></nav>` : ''}</div>`;
   const LESS = `<button class="less" type="button" aria-label="Close the full description">${CARET(UP)}</button>`;
   // Opens the details (site.js). Tablets standing up: "About this piece" in the slim bar. Phones: an invisible
   // button over the whole caption, so tapping anywhere on it opens the details.
@@ -260,6 +260,10 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
 
   const bar = (innerStrip, backHref, nextHref) => `<div class="bar">${innerStrip}<nav class="pager" aria-label="Previous and next"><a class="btn icon" href="${backHref}" rel="prev" aria-label="Previous">${CARET(LEFT)}</a><a class="btn icon" href="${nextHref}" rel="next" aria-label="Next">${CARET(RIGHT)}</a></nav></div>`;
 
+  // A piece still being painted ("completed: In progress") has no details to open on phones and tablets:
+  // just its title and status. Giving it a date brings the details back. Its neighbours' carets are marked
+  // (data-still) so a swipe toward it closes opened details first.
+  const inProgress = (a) => /in progress/i.test(String(a.completed || ''));
   const N = artworks.length;
   const artHref = (a) => `/art/${a.id}/`;
 
@@ -269,11 +273,9 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const alt = a.alt || a.title;
     const head = N > 1 ? `\n<link rel="prefetch" href="${artHref(next)}"><link rel="prefetch" href="${artHref(prev)}">` : '';
     const photo = `<a class="photo slide" href="${a.img.large}" data-large="${a.img.large}" aria-label="Enlarge photo: ${esc(alt)}">${mainImg(a.img, alt, true)}</a>`;
-    // A piece still being painted ("completed: In progress") has no details to open on phones and tablets:
-    // just its title and status. Giving it a date brings the details back.
-    const still = /in progress/i.test(String(a.completed || ''));
+    const still = inProgress(a);
     const body = `${header()}
-<main class="wrap piece" style="--ar:${ratio(a.img)}">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev) }, { img: next.img, href: artHref(next) }) : frame(photo)}
+<main class="wrap piece" style="--ar:${ratio(a.img)}">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev), still: inProgress(prev) }, { img: next.img, href: artHref(next), still: inProgress(next) }) : frame(photo)}
 <div class="panel${still ? ' still' : ''}">${still ? '' : LESS + ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;

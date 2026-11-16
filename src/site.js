@@ -101,7 +101,6 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     if (!seen) setTimeout(function () { arrows(HINT_FOR); }, HINT_AFTER);
   }
   var sides = track.querySelectorAll('.side'), panel = document.querySelector('.panel'), h0 = 0, settle = 0;
-  var words = panel ? [].slice.call(panel.querySelectorAll('.info, .back')) : [];
   function hangs() { return isPhone() && sides.length === 2 && panel; }
   // The frame height style.css gives a painting of this shape: the painting at full width plus its margin
   // (the slides' padding) all round, within the room there is and no less than the frame's min-height. The margin
@@ -121,14 +120,14 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     // The words belong to the painting leaving, so they fade out (gone CAPTION_GONE of the way across), open or
     // closed; the next page's fade in with that page. The handle and the opened panel itself stay, since the
     // next page has the same ones in the same place.
-    words.forEach(function (w) {
-      w.style.transition = animate ? 'opacity .2s ease' : 'none';
-      w.style.opacity = x ? Math.max(0, 1 - t / CAPTION_GONE) : '';
-    });
+    // (--words, style.css: the title, date and the handle under them go together.)
+    panel.classList.toggle('easing', !!animate);
+    if (x) panel.style.setProperty('--words', Math.max(0, 1 - t / CAPTION_GONE));
+    else panel.style.removeProperty('--words');
     // Sprung back: hand the height back to the stylesheet.
     if (!x) settle = setTimeout(function () {
       frame.style.height = frame.style.transition = '';
-      words.forEach(function (w) { w.style.transition = ''; });
+      panel.classList.remove('easing');
       h0 = 0;
     }, animate ? SLIDE : 0);
   }
@@ -141,8 +140,12 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
     var a = chips.querySelector('a[rel=' + (dir > 0 ? 'next' : 'prev') + ']');
     if (going || !a) return;
     going = true;
-    // Swiping with the details open on a phone keeps them open on the next page (read by the details script).
-    try { if (isPhone() && panel && panel.classList.contains('open')) sessionStorage.setItem(OPEN_KEY, a.pathname); } catch (_) {}
+    // Swiping with the details open on a phone keeps them open on the next page (read by the details script),
+    // unless that piece is in progress and has none: then they slide closed on the way.
+    if (isPhone() && panel && panel.classList.contains('open')) {
+      if (a.hasAttribute('data-still')) panel.dispatchEvent(new CustomEvent('pbp-close'));
+      else try { sessionStorage.setItem(OPEN_KEY, a.pathname); } catch (_) {}
+    }
     if (MQ.reduce.matches) { location.href = a.href; return; }
     place(-dir * frame.clientWidth, true);
     setTimeout(function () { location.href = a.href; }, SLIDE);
@@ -227,7 +230,7 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   // (Tablets standing up use the slim bar below instead; wide screens show the whole description.)
   var panel = document.querySelector('.panel'), about = panel && panel.querySelector('.about'), less = panel && panel.querySelector('.less');
   if (!about || !less) return;
-  var PULL_OPEN = 24, PULL_CLOSE = 80, FLICK = 0.5, START = 6, phone = isPhone;
+  var PULL_OPEN = 24, PULL_CLOSE = 80, FLICK = 0.5, START = 6, CLOSE_SLIDE = 280, phone = isPhone;
   function isOpen() { return panel.classList.contains('open'); }
   // Focus only follows the panel for keyboard users; after a tap or a pull it would leave a focus ring behind.
   function open(on, moveFocus) {
@@ -252,7 +255,7 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   // doesn't move. (Touch events, not pointer events: those stop the moment the panel starts scrolling.)
   var y0 = null, x0 = 0, t0 = 0, dy = 0, pulling = false;
   function slide(y, animate) {
-    panel.style.transition = animate ? 'translate .28s cubic-bezier(.32,.72,0,1)' : 'none';
+    panel.style.transition = animate ? 'translate ' + CLOSE_SLIDE + 'ms cubic-bezier(.32,.72,0,1)' : 'none';
     panel.style.translate = y ? '0 ' + y + 'px' : '';
   }
   panel.addEventListener('touchstart', function (e) {
@@ -286,6 +289,12 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   }
   panel.addEventListener('touchend', release, { passive: true });
   panel.addEventListener('touchcancel', release, { passive: true });
+
+  // Swiping toward a piece with no details: slide them closed along with the swipe.
+  panel.addEventListener('pbp-close', function () {
+    slide(panel.offsetHeight, true);
+    setTimeout(function () { open(false, false); slide(0, false); }, CLOSE_SLIDE);
+  });
 
   // Arrived by swiping with the details open: open them again at once, already up (no rising), so only the
   // words change. The opened panel keeps room for four lines of description (style.css), so it's the same

@@ -248,6 +248,10 @@ dialog#viewer::backdrop{background:var(--dark)}
     /* Every caption is the same height, so a swipe lands each painting exactly where its page draws it: a piece
        with no details keeps the handle's room, just not the handle, and titles stay on one line (above). */
     .panel.still::after{visibility:hidden}
+    /* While swiping, site.js fades the words (--words) as the painting leaves: the title, date and the handle
+       under them always go and come together, never the handle alone. */
+    .panel .info,.panel .back,.panel::after{opacity:var(--words,1)}
+    .panel.easing .info,.panel.easing .back,.panel.easing::after{transition:opacity .2s ease}
     .panel:not(.open) .about{display:block;position:absolute;inset:0;z-index:1;width:100%;padding:0;border:0;background:none;color:transparent;font-size:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
     .panel:not(.open) .about svg{display:none}
     .panel:not(.open) .about:focus-visible{outline-offset:-4px}
@@ -354,7 +358,16 @@ dialog#viewer::backdrop{background:var(--dark)}
 
 /* Page-to-page blending (Safari 18.2+, Chrome, Edge). Older browsers simply switch. */
 @view-transition{navigation:auto}
-::view-transition-old(root),::view-transition-new(root){animation-duration:.5s}
+/* The new page fades in over the old one, which stays fully showing underneath until it's covered. (A plain
+   cross-fade fades both at once, and Safari lets the page dip see-through halfway, flashing anything that is
+   the same on both pages, like the opened details or the wall behind the header.) The header is the same on
+   every page, so the new one shows at once and the old one fades out beneath it. */
+::view-transition-old(root){animation:none;mix-blend-mode:normal}
+::view-transition-new(root){animation:pbp-in .5s ease both;mix-blend-mode:normal}
+::view-transition-old(top){animation:pbp-out .5s ease both;mix-blend-mode:normal}
+::view-transition-new(top){animation:none;mix-blend-mode:normal}
+@keyframes pbp-in{from{opacity:0}}
+@keyframes pbp-out{to{opacity:0}}
 @media (prefers-reduced-motion:reduce){
   html{transition:none}
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
