@@ -483,3 +483,18 @@ function isPhone() { return !MQ.wide.matches && !MQ.tall.matches; }
   if (document.fonts) document.fonts.ready.then(fit);
   fit();
 })();
+
+// App: register the service worker (src/sw.js) so the site can be added to a phone's home screen and works offline.
+// On the very first visit the worker starts after this page has loaded, so this page and its images are saved here.
+if ('serviceWorker' in navigator) addEventListener('load', function () {
+  var first = !navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('/sw.js').then(function () {
+    if (!first || !window.caches) return;
+    var files = performance.getEntriesByType('resource').map(function (r) { return r.name; }).filter(function (u) {
+      var x = new URL(u);
+      return x.origin === location.origin && /^\/(img|fonts)\//.test(x.pathname);
+    });
+    caches.open('assets').then(function (c) { return c.addAll(files); }).catch(function () {});
+    caches.open('pages').then(function (c) { return c.add(location.pathname); }).catch(function () {});
+  }).catch(function () {});
+});

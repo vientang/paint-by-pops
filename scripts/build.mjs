@@ -204,6 +204,27 @@ async function main() {
     await fs.writeFile(path.join(DIST, logoFont[v]), data);
   }
 
+  // App icon and favicon (src/icons). app.svg is the home-screen icon, maskable.svg the Android version with
+  // room for its round mask, favicon.svg the see-through browser-tab icon. The PNGs are made from them here.
+  const iconSrc = (n) => fs.readFile(path.join(ROOT, `src/icons/${n}.svg`));
+  const appSvg = await iconSrc('app'), maskSvg = await iconSrc('maskable'), favSvg = await iconSrc('favicon');
+  const png = (svg, size) => sharp(svg, { density: 300 }).resize(size, size).png().toBuffer();
+  await fs.writeFile(path.join(DIST, 'icon.svg'), favSvg);
+  await fs.writeFile(path.join(DIST, 'apple-touch-icon.png'), await png(appSvg, 180));
+  for (const s of [192, 512]) await fs.writeFile(path.join(DIST, `icon-${s}.png`), await png(appSvg, s));
+  await fs.writeFile(path.join(DIST, 'icon-maskable-512.png'), await png(maskSvg, 512));
+  // favicon.ico for browsers that skip the SVG: 16, 32 and 48 pixel PNGs packed into one file.
+  const icoPngs = await Promise.all([16, 32, 48].map((s) => png(favSvg, s)));
+  const icoHead = Buffer.alloc(6 + 16 * icoPngs.length);
+  icoHead.writeUInt16LE(1, 2); icoHead.writeUInt16LE(icoPngs.length, 4);
+  let icoAt = icoHead.length;
+  icoPngs.forEach((b, k) => {
+    const o = 6 + 16 * k, s = [16, 32, 48][k];
+    icoHead[o] = s; icoHead[o + 1] = s; icoHead.writeUInt16LE(1, o + 4); icoHead.writeUInt16LE(32, o + 6);
+    icoHead.writeUInt32LE(b.length, o + 8); icoHead.writeUInt32LE(icoAt, o + 12); icoAt += b.length;
+  });
+  await fs.writeFile(path.join(DIST, 'favicon.ico'), Buffer.concat([icoHead, ...icoPngs]));
+
   // Images
   for (const a of artworks) {
     a.id = String(a.id);
@@ -234,6 +255,7 @@ async function main() {
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ''}<meta name="theme-color" content="${pal.bg}">
 ${canonical && siteUrl ? `<link rel="canonical" href="${siteUrl}${canonical}">` : ''}
 ${siteUrl ? `<meta property="og:title" content="${esc(title)}"><meta property="og:type" content="website">${ogImage ? `<meta property="og:image" content="${siteUrl}${ogImage}">` : ''}` : ''}
+<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta name="apple-mobile-web-app-title" content="Pops">
 <link rel="preload" href="/fonts/atkinson-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="${logoFont.upright}" as="font" type="font/woff2" crossorigin><link rel="preload" href="${logoFont.italic}" as="font" type="font/woff2" crossorigin>
 <style>${fontCss}:root{--bg:${pal.bg};--grad:${pal.grad}}${css}</style>${head}
@@ -332,7 +354,22 @@ ${bar(strip(a, j), xhref(pj), xhref(nj))}</div></main>`;
 
   // 404 + hosting files
   await out('404.html', page({ title: `Page not found · ${brand}`, pal: palette(PAPER_TINTS), body: `${header()}<main class="wrap"><h1>Page not found</h1><p>That page doesn’t exist. <a href="/">Go to the home page</a>.</p></main>` }));
-  await out('_headers', `/img/*\n  Cache-Control: public, max-age=31536000, immutable\n/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n`);
+  // App: what a phone needs to put the site on its home screen (manifest), the offline page, and the service worker.
+  await out('offline/index.html', page({ title: `Offline · ${brand}`, pal: palette(PAPER_TINTS), head: '<meta name="robots" content="noindex">', body: `${header()}<main class="wrap"><h1>You’re offline</h1><p>This page hasn’t been saved on this device yet. Paintings you’ve already opened still work. <a href="/">Go to the home page</a>.</p></main>` }));
+  await out('manifest.webmanifest', JSON.stringify({
+    id: '/', name: brand, short_name: 'Pops', description: `Artwork by ${artist}`, start_url: '/', scope: '/', display: 'standalone',
+    background_color: PAPER, theme_color: PAPER,
+    icons: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  }, null, 2));
+  const swSrc = await fs.readFile(path.join(ROOT, 'src/sw.js'), 'utf8');
+  const offlineHtml = await fs.readFile(path.join(DIST, 'offline/index.html'));
+  const thumbs = JSON.stringify(artworks.map((a) => a.img.page[0].url));
+  await out('sw.js', swSrc.replace('__THUMBS__', thumbs).replace(/__VERSION__/g, crypto.createHash('sha1').update(swSrc).update(offlineHtml).update(thumbs).digest('hex').slice(0, 8)));
+  await out('_headers', `/img/*\n  Cache-Control: public, max-age=31536000, immutable\n/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/sw.js\n  Cache-Control: no-cache\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n`);
   if (siteUrl) {
     const urls = ['/', '/about/', ...artworks.flatMap((a) => [artHref(a), ...a.extras.map((_, j) => `/art/${a.id}/${j + 1}/`)])];
     await out('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `<url><loc>${siteUrl}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
