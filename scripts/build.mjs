@@ -264,6 +264,14 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
   // just its title and status. Giving it a date brings the details back. Its neighbours' carets are marked
   // (data-still) so a swipe toward it closes opened details first.
   const inProgress = (a) => /in progress/i.test(String(a.completed || ''));
+  // Medium and size ("Oil · 18 × 24 in"), under the date. Sizes are in inches: "18 x 24" or "18X24" become
+  // "18 × 24 in"; a size that already names its unit (cm, ft…) is left as typed.
+  const specLine = (a) => {
+    let size = String(a.size || '').trim();
+    if (size) { size = size.replace(/\s*[xX×]\s*/g, ' × '); if (/^[\d.\s×/"]+$/.test(size)) size = size.replace(/"/g, '').trim() + ' in'; }
+    const bits = [String(a.medium || '').trim(), size].filter(Boolean);
+    return bits.length ? `<p class="spec">${bits.map((b) => `<span>${esc(b)}</span>`).join('')}</p>` : '';
+  };
   const N = artworks.length;
   const artHref = (a) => `/art/${a.id}/`;
 
@@ -276,7 +284,7 @@ ${viewer ? VIEWER : ''}<script>${js}</script></body></html>`;
     const still = inProgress(a);
     const body = `${header()}
 <main class="wrap piece" style="--ar:${ratio(a.img)}">${N > 1 ? frame(photo, { img: prev.img, href: artHref(prev), still: inProgress(prev) }, { img: next.img, href: artHref(next), still: inProgress(next) }) : frame(photo)}
-<div class="panel${still ? ' still' : ''}">${still ? '' : LESS + ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}
+<div class="panel${still ? ' still' : ''}">${still ? '' : LESS + ABOUT('piece')}<div class="info"><h1>${esc(a.title)}</h1>${sub(a.completed, i, N)}${specLine(a)}
 ${paras(a.description)}</div>
 ${bar(strip(a, -1), artHref(prev), artHref(next))}</div></main>`;
     const html = page({ title: `${a.title} · ${brand}`, desc: String(a.description || '').replace(/\s+/g, ' ').trim().slice(0, 160), pal: a.pal, body, canonical: artHref(a), ogImage: a.img.page[a.img.page.length - 1].url, head, viewer: true });
