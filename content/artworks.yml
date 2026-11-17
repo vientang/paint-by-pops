@@ -18,6 +18,10 @@
 #                 Write "In progress" for an unfinished piece: on
 #                 phones and tablets it then shows only its title
 #                 and status, with no description to open.
+#    medium       Optional. Example: Oil
+#    size         Optional. In inches, for example
+#                 18 x 24 (shown as "18 × 24 in"). Medium and size
+#                 show under the date in the details.
 #    description  A few sentences. Blank line = new paragraph.
 #                 For a poem, write "description: |" and put each
 #                 line on its own line, indented (see the first piece).
@@ -35,6 +39,8 @@
 - id: wild-horse
   title: "Wild horse"
   completed: "September 7, 2026"
+  medium: "Oil"
+  size: "24 x 35"
   description: "A bay horse breaking into a gallop, mane flying, through a rush of wind and light."
   photo: IMG_1463.jpg
   alt: "Oil painting of a bay horse with a white blaze galloping straight toward the viewer, its dark mane streaming against a swirling pale blue and cream background."
@@ -42,6 +48,8 @@
 - id: paris-montmartre
   title: "Paris Montmartre"
   completed: "May 2026"
+  medium: "Oil"
+  size: "18 x 24"
   description: |
     Through streets of stone where echoes sleep
     And golden autumn shadows weep
@@ -52,18 +60,24 @@
 - id: purry-friends
   title: "Purry friends"
   completed: "September 29, 2026"
+  medium: "Oil"
+  size: "18 x 24"
   description: "Two cats who like to swim."
   photo: IMG_1453.JPG
 
 - id: coffee-by-the-window
   title: "Coffee by the window"
   completed: "October 15, 2026"
+  medium: "Oil"
+  size: "18 x 24"
   description: "The kind of morning with no agenda, just an invitation to pause and enjoy the thoughts."
   photo: IMG_1452.JPG
 
 - id: king-parrots
   title: "King parrots"
   completed: "January 2006"
+  medium: "Oil"
+  size: "18 x 24"
   description: "A pair of king parrots, one green and one red, resting among fuchsias and white blossoms in a shady rainforest."
   photo: IMG_1465.jpg
   background: "#D5DDCF"
@@ -72,6 +86,8 @@
 - id: grand-canal-in-progress
   title: "Grand Canal, Venice"
   completed: "In progress"
+  medium: "Oil"
+  size: "48 x 24"
   description: "Still on the easel"
   photo: grand-canal-in-progress.jpg
   background: ["#D7E5F4", "#D2EEEB", "#F6E8C8"]

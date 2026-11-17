@@ -40,6 +40,8 @@ main{flex:1;display:flex;flex-direction:column;padding-top:8px;padding-bottom:16
 .photo img{display:block;width:auto;height:auto;max-width:100%;max-height:52svh;margin:0 auto;border-radius:4px;background:var(--dom,#ddd);object-fit:contain}
 h1{margin:4px 0 0;font-family:var(--serif);font-size:30px;line-height:1.2}
 .sub{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.spec{margin:3px 0 0;font-size:14px;color:var(--muted)}
+.spec span+span::before{content:"·";margin:0 .5em}
 .desc{font-family:var(--serif);font-size:17px;line-height:1.6}
 .desc p{margin:12px 0 0}
 .back{display:inline-flex;align-items:center;align-self:flex-start;min-height:44px;font-size:15px;color:rgba(43,43,43,.78);text-decoration:none}
@@ -240,7 +242,7 @@ dialog#viewer::backdrop{background:var(--dark)}
 
     .panel{flex:none;justify-content:flex-start;margin:0;padding:4px var(--pad) max(14px,env(safe-area-inset-bottom));border-radius:0;background:none;text-align:center}
     .panel:not(.open){touch-action:none}
-    .panel:not(.open) .desc,.panel:not(.open) .count{display:none}
+    .panel:not(.open) .desc,.panel:not(.open) .count,.panel:not(.open) .spec{display:none}
     .panel:not(.open) .back{justify-content:center;margin:0 0 4px}
     .piece .panel:not(.open) h1{font:italic 400 19px/1.25 var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .piece .panel:not(.open) .sub{display:block;margin-top:4px;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase}
@@ -313,10 +315,14 @@ dialog#viewer::backdrop{background:var(--dark)}
   .piece .panel.open .less{opacity:1;pointer-events:auto;transition:opacity .3s ease .18s}
 
   /* The details: only laid out once opening starts (.full), then faded and drifted in (.open). */
-  .piece .desc,.piece .bar{display:none;opacity:0;translate:0 16px;transition:opacity .15s ease,translate .3s ease}
-  .piece .panel.full .desc{display:block}
+  .piece .desc,.piece .bar,.piece .spec{display:none;opacity:0;translate:0 16px;transition:opacity .15s ease,translate .3s ease}
+  .piece .panel.full .desc,.piece .panel.full .spec{display:block}
+  /* Opening: start the details at the top. Centred, the part taller than the slim bar hung above its top edge,
+     where the panel's measurement (site.js) missed it, so the opened panel came out short and cut off the title. */
+  .piece .panel.full{justify-content:flex-start}
+  .piece .spec{translate:0 8px}
   .piece .panel.full .bar{display:flex}
-  .piece .panel.open .desc,.piece .panel.open .bar{opacity:1;translate:0 0;transition:opacity .3s ease .18s,translate .5s cubic-bezier(.32,.72,0,1)}
+  .piece .panel.open .desc,.piece .panel.open .bar,.piece .panel.open .spec{opacity:1;translate:0 0;transition:opacity .3s ease .18s,translate .5s cubic-bezier(.32,.72,0,1)}
   .piece .desc{min-height:0;margin-top:12px;font-size:18px;line-height:1.6}
   .piece .bar{margin:16px 0 0;padding:16px 0 12px;border-top:1px solid rgba(43,43,43,.15)}
   .thumb{width:56px;height:56px}
@@ -345,6 +351,7 @@ dialog#viewer::backdrop{background:var(--dark)}
   .piece h1{margin:0;font-size:34px}
   .piece .sub{display:flex;justify-content:space-between;gap:12px;font-size:15px}
   .piece .desc{font-size:18px}
+  .piece .spec{font-size:15px}
   .bar{position:static;background:none}
   .bar::before{display:none}
   .piece .bar{margin:20px 0 0;padding:18px 0 0;border-top:1px solid rgba(43,43,43,.15)}
